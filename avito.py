@@ -166,9 +166,9 @@ async def handle_webhook_message(request):
             if application_db is not None:
                 d['is_f'] = False
 
-    if d['is_f']:
-        if len(messages) <= 2:
-            await add_new_application(
+    if True:
+        # if len(messages) <= 2:
+        await add_new_application(
                 user_id=user_id,
                 chat_id=chat_id,
                 m_id=m_id,
@@ -176,7 +176,7 @@ async def handle_webhook_message(request):
                 content=content,
                 author_id=author_id,
                 created=created
-            )
+        )
     else:
         await send_user_message(
             user_id=user_id,
@@ -248,7 +248,7 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
     async with AsyncSessionLocal() as session:
         async with session.begin():
             result = await session.execute(
-                select(Application).filter(Application.avito_chat_id == '-1')
+                select(Application).filter(Application.avito_chat_id == chat_id)
             )
             application_db = result.scalars().first()
 
