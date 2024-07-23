@@ -16,11 +16,11 @@ import kb
 import config
 from db import AsyncSessionLocal
 from message_processing import delete_state_messages, to_date, send_state_message, add_state_id
-from models.addiction import Addiction
 from models.application import Application
 from models.city import City
 from models.comission import Commission
 from models.item import Item
+from models.item_addiction import ItemAddiction
 from models.requisites import Requisites
 from models.user import User
 from states import States
@@ -660,6 +660,7 @@ def load_handlers_admin(dp, bot: Bot):
 
     @router.message(States.report_date)
     async def read_report_date(message: types.Message, state: FSMContext):
+        from report import collect_data, send_report
         try:
             date_str = message.text
 
@@ -695,88 +696,18 @@ def load_handlers_admin(dp, bot: Bot):
                         if not b:
                             return
 
-                        result = await session.execute(
-                            select(Application).filter(
-                                and_(
-                                    Application.created >= start_unix,
-                                    Application.created <= end_unix
-                                )
+                        report = await collect_data(session, start_unix, end_unix)
+
+                        if report:
+                            await bot.send_media_group(
+                                chat_id=message.chat.id,
+                                media=[report]
                             )
-                        )
-                        applications = result.scalars().all()
-
-                        if len(applications) == 0:
-                            await send_state_message(
-                                state=state,
-                                message=message,
-                                text="За данный период не найдено выполенных заявок"
+                        else:
+                            await bot.send_message(
+                                chat_id=message.chat.id,
+                                text="За данный период нет новых заявок"
                             )
-                            return
-
-                        data = {
-                            "Наименование": [],
-                            "Телефон исполнителя": [],
-                            "Ф.И.О. Исполнителя": [],
-                            "Наименование Заказчика": [],
-                            "Последнее сообщение Заказчика": [],
-                            "Дата обращения Заказчика": [],
-                            "Дата последнего сообщения": [],
-                            "Сумма отклика за заявку": [],
-                        }
-
-                        names, phones, fio, usernames, last_messages, date_income, date_last_message, price = \
-                            [], [], [], [], [], [], [], []
-
-                        working_ids = [application.working_user_id for application in applications]
-
-                        result = await session.execute(
-                            select(User).filter(User.telegram_user_id.in_(working_ids))
-                        )
-                        users = result.scalars().all()
-
-                        for application in applications:
-                            user = next((u for u in users if u.telegram_user_id == application.working_user_id), None)
-
-                            if user is None:
-                                phones.append("-")
-                                fio.append("-")
-                            else:
-                                phones.append(user.phone)
-                                fio.append(user.name)
-                            names.append(application.item_name)
-                            usernames.append(application.username)
-                            last_messages.append(application.last_message_text)
-                            date_income.append(to_date(application.created))
-                            date_last_message.append(to_date(application.last_message_time))
-                            price.append(application.price)
-
-                        data['Наименование'] = names
-                        data['Телефон исполнителя'] = phones
-                        data['Ф.И.О. Исполнителя'] = fio
-                        data['Наименование Заказчика'] = usernames
-                        data['Последнее сообщение Заказчика'] = last_messages
-                        data['Дата обращения Заказчика'] = date_income
-                        data['Дата последнего сообщения'] = date_last_message
-                        data['Сумма отклика за заявку'] = price
-
-                        df = pd.DataFrame(data)
-
-                        output = BytesIO()
-                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                            df.to_excel(writer, index=False, sheet_name='Заявки')
-                        output.seek(0)
-                        excel_bytes = output.getvalue()
-                        report = InputMediaDocument(
-                            media=BufferedInputFile(
-                                excel_bytes,
-                                filename=f'report_{date_str}.xlsx'
-                            ),
-                        )
-
-                        await bot.send_media_group(
-                            chat_id=message.chat.id,
-                            media=[report]
-                        )
 
         except Exception as e:
             print(e)
@@ -839,7 +770,7 @@ def load_handlers_admin(dp, bot: Bot):
                 text="Введите локации через запятую, например:\nМосква, Московская область",
                 state_name="location_ids"
             )
-            await state.update_data(add_location=callback_query.message.message_id)
+            await state.update_data(add_location=[callback_query.message.message_id, callback_query.message.chat.id])
             await state.set_state(States.add_location)
         except Exception as e:
             print(e)
@@ -866,30 +797,34 @@ def load_handlers_admin(dp, bot: Bot):
             async with AsyncSessionLocal() as session:
                 async with session.begin():
                     data = await state.get_data()
-                    message_id = data.get("add_location", 1)
+                    data = data.get("add_location", [1, 1])
                     result = await session.execute(
-                        select(Addiction).filter(Addiction.telegram_message_id == message_id)
+                        select(ItemAddiction).filter(and_(
+                            ItemAddiction.telegram_message_id == data[0],
+                            ItemAddiction.telegram_chat_id == data[1]
+                        ))
                     )
-                    addiction = result.scalars().first()
+                    item_addiction = result.scalars().first()
 
-                    if addiction is None:
+                    if item_addiction is None:
                         return
 
                     result = await session.execute(
-                        select(Application).filter(Application.id == addiction.application_id)
-                    )
-                    application = result.scalars().first()
-
-                    if application is None:
-                        return
-
-                    result = await session.execute(
-                        select(Item).filter(Item.avito_item_id == application.item_id)
+                        select(Item).filter(Item.id == item_addiction.item_id)
                     )
                     item = result.scalars().first()
 
+                    if item is None:
+                        return
+
+                    result = await session.execute(
+                        select(Application).filter(Application.item_id == item.avito_item_id)
+                    )
+                    applications = result.scalars().all()
+
                     item.location = locations
-                    application.item_location = locations
+                    for ap in applications:
+                        ap.item_location = locations
 
                     result = await session.execute(
                         select(User).filter(
@@ -898,18 +833,33 @@ def load_handlers_admin(dp, bot: Bot):
                     )
                     users = result.scalars().all()
 
-                    await session.delete(addiction)
+                    result = await session.execute(
+                        select(ItemAddiction).filter(ItemAddiction.item_id == item.id)
+                    )
+                    item_addictions = result.scalars().all()
+
+                    for ad in item_addictions:
+                        try:
+                            await bot.delete_message(
+                                chat_id=ad.telegram_chat_id,
+                                message_id=ad.telegram_message_id,
+                            )
+                        except:
+                            ...
+                        await session.delete(ad)
+
                     await session.flush()
 
                     for user in users:
-                        await show_application(
-                            session=session,
-                            application=application,
-                            user_city=user.city,
-                            is_admin=user.admin,
-                            bot=bot,
-                            chat_id=user.telegram_chat_id
-                        )
+                        for ap in applications:
+                            await show_application(
+                                session=session,
+                                application=ap,
+                                user_city=user.city,
+                                is_admin=user.admin,
+                                bot=bot,
+                                chat_id=user.telegram_chat_id
+                            )
 
                 await session.commit()
 
@@ -929,5 +879,29 @@ def load_handlers_admin(dp, bot: Bot):
 
         except Exception as e:
             print(e)
+
+    @router.message(Command('items'), StateFilter(None, States.message))
+    async def get_none_items(message: types.Message):
+        from applications import show_new_item_for_admin
+        async with AsyncSessionLocal() as session:
+            async with session.begin():
+                result = await session.execute(
+                    select(Item).filter(
+                        Item.location == "None"
+                    )
+                )
+                items = result.scalars().all()
+
+                for item in items:
+                    await show_new_item_for_admin(
+                        session=session,
+                        bot=bot,
+                        url=item.url,
+                        item_id=item.id,
+                        avito_item_id=item.avito_item_id,
+                        chat_id=message.chat.id
+                    )
+
+
 
     dp.include_router(router)

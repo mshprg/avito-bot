@@ -159,7 +159,7 @@ async def handle_webhook_message(request):
     async with AsyncSessionLocal() as session:
         async with session.begin():
             result = await session.execute(
-                select(Application).filter(Application.avito_chat_id == str(chat_id))
+                select(Application).filter(Application.avito_chat_id == chat_id)
             )
             application_db = result.scalars().first()
 
@@ -197,7 +197,7 @@ async def send_user_message(user_id, chat_id, m_type, content, author_id, create
         async with AsyncSessionLocal() as session:
             async with session.begin():
                 result = await session.execute(
-                    select(Application).filter(Application.avito_chat_id == str(chat_id))
+                    select(Application).filter(Application.avito_chat_id == chat_id)
                 )
                 application_db = result.scalars().first()
 
@@ -248,7 +248,7 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
     async with AsyncSessionLocal() as session:
         async with session.begin():
             result = await session.execute(
-                select(Application).filter(Application.avito_chat_id == chat_id)
+                select(Application).filter(Application.avito_chat_id == '-1')
             )
             application_db = result.scalars().first()
 
@@ -263,12 +263,12 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
                 if item is not None:
                     item_location = item.location
                 else:
-                    new_item = Item(
+                    item = Item(
                         avito_item_id=int(chat['context']['value']['id']),
                         url=chat['context']['value']['url'],
                         location="None"
                     )
-                    session.add(new_item)
+                    session.add(item)
 
                 application = Application(
                     avito_chat_id=chat_id,
@@ -296,9 +296,9 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
                     await show_new_item_for_admin(
                         session=session,
                         bot=main.bot,
-                        application_id=application.id,
                         url=chat['context']['value']['url'],
-                        item_id=int(application.item_id)
+                        avito_item_id=item.avito_item_id,
+                        item_id=item.id
                     )
                 else:
                     result = await session.execute(

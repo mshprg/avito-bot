@@ -1,8 +1,11 @@
 import asyncio
 import logging
 
+import pytz
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
+from apscheduler.jobstores.base import ConflictingIdError
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
 import handlers
 import handlers_admin
@@ -13,8 +16,23 @@ from models.city import City
 from models.comission import Commission
 from models.requisites import Requisites
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 bot = Bot(token=config.BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+scheduler = AsyncIOScheduler(timezone=pytz.timezone('Europe/Moscow'))
+
+
+def schedule_jobs():
+    import report
+    try:
+        scheduler.add_job(report.generate_report, 'cron', hour=0, minute=0)
+        logger.info("Scheduled jobs")
+        scheduler.start()
+        logger.info("Scheduler started")
+    except ConflictingIdError:
+        logger.error("Job with the same ID already exists.")
 
 
 async def start_bot():
@@ -67,6 +85,8 @@ async def start_bot():
 
 
 async def main():
+    schedule_jobs()
+
     await asyncio.gather(
         avito.start_avito_webhook(avito.handle_webhook_message),
         start_bot()

@@ -12,6 +12,7 @@ from message_processing import send_state_message, send_state_media
 from models.addiction import Addiction
 from models.application import Application
 from db import AsyncSessionLocal
+from models.item_addiction import ItemAddiction
 from models.mask import Mask
 from models.user import User
 
@@ -238,26 +239,35 @@ async def send_message_for_application(avito_user_id, avito_chat_id, text):
     )
 
 
-async def show_new_item_for_admin(session, bot: Bot, application_id, url, item_id):
+async def show_new_item_for_admin(session, bot: Bot, url, item_id, avito_item_id, chat_id=None):
+
+    filters = [
+        User.admin == True,
+    ]
+
+    if chat_id:
+        filters.append(User.telegram_chat_id == chat_id)
+
     result = await session.execute(
-        select(User).filter(
-            User.admin == True
-        )
+        select(User).filter(and_(*filters))
     )
     users = result.scalars().all()
 
-    text = f"<b>У вас новое объявление:</b>\n\nID: {item_id}\nURL: {url}\n\n Добавьте локацию к этому объявлению"
+    text = f"<b>У вас новое объявление:</b>\n\nID: {avito_item_id}\nURL: {url}\n\n Добавьте локацию к этому объявлению"
 
     for user in users:
-        m = await bot.send_message(
-            chat_id=user.telegram_chat_id,
-            text=text,
-            reply_markup=kb.create_add_city_keyboard(),
-            parse_mode=ParseMode.HTML,
-        )
-        addiction = Addiction(
-            application_id=application_id,
-            telegram_message_id=m.message_id,
-            telegram_chat_id=m.chat.id,
-        )
-        session.add(addiction)
+        try:
+            m = await bot.send_message(
+                chat_id=user.telegram_chat_id,
+                text=text,
+                reply_markup=kb.create_add_city_keyboard(),
+                parse_mode=ParseMode.HTML,
+            )
+            new_item_addiction = ItemAddiction(
+                item_id=item_id,
+                telegram_message_id=m.message_id,
+                telegram_chat_id=user.telegram_chat_id,
+            )
+            session.add(new_item_addiction)
+        except:
+            ...
