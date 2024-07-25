@@ -244,7 +244,7 @@ def load_handlers(dp, bot: Bot):
             await send_state_message(
                 state=state,
                 message=message,
-                text="Ознакомительно видео:",
+                text="Ознакомительное видео:",
                 keyboard=types.ReplyKeyboardRemove()
             )
 
