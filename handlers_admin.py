@@ -1,21 +1,19 @@
 import calendar
 import time
 from datetime import datetime
-from io import BytesIO
 
 from aiogram import Router, Bot, F, types
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import BufferedInputFile, InputMediaDocument
 from sqlalchemy import select, and_
-import pandas as pd
 
 import callbacks
 import kb
 import config
 from db import AsyncSessionLocal
-from message_processing import delete_state_messages, to_date, send_state_message, add_state_id
+from message_processing import delete_state_messages, send_state_message, add_state_id
+from models.addiction import Addiction
 from models.application import Application
 from models.city import City
 from models.comission import Commission
@@ -29,6 +27,98 @@ from states import States
 
 def load_handlers_admin(dp, bot: Bot):
     router = Router()
+
+    @router.message(Command('reload'), StateFilter(None, States.message))
+    async def reload(message: types.Message, state: FSMContext):
+        from message_processing import delete_message_ids
+        from applications import show_applications, show_messages_for_application
+        try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id
+            )
+            await delete_state_messages(
+                state=state,
+                bot=bot,
+                chat_id=message.chat.id
+            )
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    await delete_message_ids(
+                        session=session,
+                        bot=bot,
+                        telegram_chat_id=message.chat.id
+                    )
+
+                    result = await session.execute(
+                        select(User).filter(User.telegram_chat_id == message.chat.id)
+                    )
+                    user = result.scalars().first()
+
+                    if user is None:
+                        return
+
+                    result = await session.execute(
+                        select(Application).filter(Application.working_user_id == user.telegram_user_id)
+                    )
+                    application = result.scalars().first()
+
+                    result = await session.execute(
+                        select(Addiction).filter(
+                            Addiction.telegram_chat_id == message.chat.id)
+                    )
+                    addictions = result.scalars().all()
+
+                    for ad in addictions:
+                        try:
+                            await bot.delete_message(
+                                chat_id=message.chat.id,
+                                message_id=ad.telegram_message_id,
+                            )
+                        except:
+                            ...
+                        await session.delete(ad)
+
+                    if user.in_working:
+                        in_working = True
+                        u = {'telegram_chat_id': user.telegram_chat_id}
+                        a = {
+                            'avito_chat_id': application.avito_chat_id,
+                            'user_id': application.user_id,
+                            'author_id': application.author_id,
+                            'username': application.username
+                        }
+                    else:
+                        in_working = False
+
+            await state.clear()
+            await state.update_data(ids=[])
+
+            if in_working:
+                await show_messages_for_application(
+                    state=state,
+                    bot=bot,
+                    telegram_chat_id=u['telegram_chat_id'],
+                    avito_chat_id=a['avito_chat_id'],
+                    avito_user_id=a['user_id'],
+                    author_id=a['author_id'],
+                    username=a['username']
+                )
+
+                await state.update_data(avito_info={
+                    'chat_id': a['avito_chat_id'],
+                    'user_id': a['user_id'],
+                })
+
+                await state.set_state(States.message)
+            else:
+                await show_applications(
+                    chat_id=message.chat.id,
+                    user_id=message.from_user.id,
+                    bot=bot
+                )
+        except Exception as e:
+            print(e)
 
     async def check_user_for_admin(session, state, chat_id):
         result = await session.execute(
@@ -884,7 +974,7 @@ def load_handlers_admin(dp, bot: Bot):
             print(e)
 
     @router.message(Command('items'), StateFilter(None, States.message))
-    async def get_none_items(message: types.Message):
+    async def get_none_items(message: types.Message, state: FSMContext):
         try:
             from applications import show_new_item_for_admin
             async with AsyncSessionLocal() as session:

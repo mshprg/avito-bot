@@ -31,96 +31,6 @@ media_groups = {}
 def load_handlers(dp, bot: Bot):
     router = Router()
 
-    @router.message(Command('reload'), StateFilter(None, States.message))
-    async def reload(message: types.Message, state: FSMContext):
-        try:
-            await add_state_id(
-                state=state,
-                message_id=message.message_id
-            )
-            await delete_state_messages(
-                state=state,
-                bot=bot,
-                chat_id=message.chat.id
-            )
-            async with AsyncSessionLocal() as session:
-                async with session.begin():
-                    await delete_message_ids(
-                        session=session,
-                        bot=bot,
-                        telegram_chat_id=message.chat.id
-                    )
-
-                    result = await session.execute(
-                        select(User).filter(User.telegram_chat_id == message.chat.id)
-                    )
-                    user = result.scalars().first()
-
-                    if user is None:
-                        return
-
-                    result = await session.execute(
-                        select(Application).filter(Application.working_user_id == user.telegram_user_id)
-                    )
-                    application = result.scalars().first()
-
-                    result = await session.execute(
-                        select(Addiction).filter(
-                            Addiction.telegram_chat_id == message.chat.id)
-                    )
-                    addictions = result.scalars().all()
-
-                    for ad in addictions:
-                        try:
-                            await bot.delete_message(
-                                chat_id=message.chat.id,
-                                message_id=ad.telegram_message_id,
-                            )
-                        except:
-                            ...
-                        await session.delete(ad)
-
-                    if user.in_working:
-                        in_working = True
-                        u = {'telegram_chat_id': user.telegram_chat_id}
-                        a = {
-                            'avito_chat_id': application.avito_chat_id,
-                            'user_id': application.user_id,
-                            'author_id': application.author_id,
-                            'username': application.username
-                        }
-                    else:
-                        in_working = False
-
-            await state.clear()
-            await state.update_data(ids=[])
-
-            if in_working:
-                await show_messages_for_application(
-                    state=state,
-                    bot=bot,
-                    telegram_chat_id=u['telegram_chat_id'],
-                    avito_chat_id=a['avito_chat_id'],
-                    avito_user_id=a['user_id'],
-                    author_id=a['author_id'],
-                    username=a['username']
-                )
-
-                await state.update_data(avito_info={
-                    'chat_id': a['avito_chat_id'],
-                    'user_id': a['user_id'],
-                })
-
-                await state.set_state(States.message)
-            else:
-                await show_applications(
-                    chat_id=message.chat.id,
-                    user_id=message.from_user.id,
-                    bot=bot
-                )
-        except Exception as e:
-            print(e)
-
     @router.message(Command('myquestions'), StateFilter(None, States.message))
     async def get_my_questions(message: types.Message, state: FSMContext):
         try:
@@ -355,7 +265,7 @@ def load_handlers(dp, bot: Bot):
                 user_data = await state.get_data()
 
                 admin = False
-                if callback_query.message.from_user.id == config.ROOT_USER_ID:
+                if callback_query.from_user.id == config.ROOT_USER_ID:
                     admin = True
 
                 user = User(
@@ -1022,6 +932,10 @@ def load_handlers(dp, bot: Bot):
     @router.message(States.user_card_number)
     async def read_user_card_number(message: types.Message, state: FSMContext):
         try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id
+            )
             number = int(message.text)
             if len(message.text) != 16:
                 raise Exception("Invalid length")
@@ -1052,10 +966,11 @@ def load_handlers(dp, bot: Bot):
                     for u in admin_users:
                         try:
                             text = (f"Пользователь отменил заявку, требуется вернуть комиссию в размере "
-                                    f"{application.com_value} руб. на карту <b>{number}</b>")
+                                    f"<b>{application.com_value} руб.</b> на карту <b>{number}</b>")
                             await bot.send_message(
                                 chat_id=u.telegram_chat_id,
-                                text=text
+                                text=text,
+                                parse_mode=ParseMode.HTML,
                             )
                         except:
                             ...
