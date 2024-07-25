@@ -121,7 +121,7 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('my-questions'), StateFilter(None, States.message))
+    @router.message(Command('myquestions'), StateFilter(None, States.message))
     async def get_my_questions(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
