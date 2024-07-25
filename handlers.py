@@ -876,7 +876,7 @@ def load_handlers(dp, bot: Bot):
                         await send_state_message(
                             state=state,
                             message=callback_query.message,
-                            text="Отправьте номер карты на который вам нужно вернуть комиссию",
+                            text="Отправьте номер карты на которую вам нужно вернуть комиссию",
                         )
                         await state.set_state(States.user_card_number)
                         return
