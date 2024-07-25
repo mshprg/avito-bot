@@ -533,7 +533,7 @@ def load_handlers_admin(dp, bot: Bot):
 
         return False
 
-    @router.message(Command('make-admin'), StateFilter(None, States.message))
+    @router.message(Command('mkadmin'), StateFilter(None, States.message))
     async def make_admin(message: types.Message, state: FSMContext):
         try:
             b = await change_admin_command_handler(
@@ -548,7 +548,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('delete-admin'), StateFilter(None, States.message))
+    @router.message(Command('rmadmin'), StateFilter(None, States.message))
     async def delete_admin(message: types.Message, state: FSMContext):
         try:
             b = await change_admin_command_handler(
