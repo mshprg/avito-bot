@@ -592,7 +592,6 @@ def load_handlers(dp, bot: Bot):
                 await session.commit()
 
             await state.clear()
-            await state.update_data(ids=[])
 
             await show_messages_for_application(
                 state=state,
@@ -603,11 +602,6 @@ def load_handlers(dp, bot: Bot):
                 author_id=a['author_id'],
                 username=a['username']
             )
-
-            await state.update_data(avito_info={
-                'chat_id': a['avito_chat_id'],
-                'user_id': a['user_id'],
-            })
 
             await state.set_state(States.message)
         except Exception as e:
@@ -629,9 +623,27 @@ def load_handlers(dp, bot: Bot):
             await add_state_id(state, message.message_id)
 
             data = await state.get_data()
-            avito_info = data.get("avito_info")
-            avito_chat_id = avito_info['chat_id']
-            avito_user_id = avito_info['user_id']
+            avito_info = data.get("avito_info", None)
+
+            if avito_info is None:
+                async with AsyncSessionLocal() as session:
+                    async with session.begin():
+                        result = await session.execute(
+                            select(Application).filter(
+                                Application.working_user_id == message.from_user.id)
+                        )
+                        application = result.scalars().first()
+
+                        avito_chat_id = str(application.avito_chat_id)
+                        avito_user_id = str(application.user_id)
+
+                        await state.update_data(avito_info={
+                            'chat_id': avito_chat_id,
+                            'user_id': avito_user_id,
+                        })
+            else:
+                avito_chat_id = avito_info['chat_id']
+                avito_user_id = avito_info['user_id']
 
             await send_message_for_application(
                 avito_user_id=avito_user_id,

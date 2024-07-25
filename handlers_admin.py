@@ -28,6 +28,32 @@ from states import States
 def load_handlers_admin(dp, bot: Bot):
     router = Router()
 
+    @router.message(Command('cancel'), StateFilter("*"))
+    async def cancel(message: types.Message, state: FSMContext):
+        try:
+            data = await state.get_data()
+            await state.clear()
+            await state.update_data(data)
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(User).filter(User.telegram_user_id == message.from_user.id)
+                    )
+                    user = result.scalars().first()
+
+                    if user is None:
+                        return
+
+                    if user.in_working:
+                        await state.set_state(States.message)
+
+            await bot.delete_message(
+                chat_id=message.chat.id,
+                message_id=message.message_id
+            )
+        except Exception as e:
+            print(e)
+
     @router.message(Command('reload'), StateFilter(None, States.message))
     async def reload(message: types.Message, state: FSMContext):
         from message_processing import delete_message_ids
@@ -92,7 +118,6 @@ def load_handlers_admin(dp, bot: Bot):
                         in_working = False
 
             await state.clear()
-            await state.update_data(ids=[])
 
             if in_working:
                 await show_messages_for_application(
@@ -104,11 +129,6 @@ def load_handlers_admin(dp, bot: Bot):
                     author_id=a['author_id'],
                     username=a['username']
                 )
-
-                await state.update_data(avito_info={
-                    'chat_id': a['avito_chat_id'],
-                    'user_id': a['user_id'],
-                })
 
                 await state.set_state(States.message)
             else:
@@ -751,7 +771,7 @@ def load_handlers_admin(dp, bot: Bot):
 
     @router.message(States.report_date)
     async def read_report_date(message: types.Message, state: FSMContext):
-        from report import collect_data, send_report
+        from report import collect_data
         try:
             date_str = message.text
 

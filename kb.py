@@ -30,6 +30,7 @@ def create_feedback_keyboard():
     button = KeyboardButton(text="Обратная связь")
     return ReplyKeyboardMarkup(keyboard=[[button]])
 
+
 def create_feedback_actions_keyboard():
     return generate_inline_markup([
         ['Задать вопрос', callbacks.SEND_QUESTION_CALLBACK],
