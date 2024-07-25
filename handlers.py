@@ -97,6 +97,7 @@ def load_handlers(dp, bot: Bot):
                             state=state,
                             message=message,
                             text="Вы уже зарегистрированы",
+                            keyboard=kb.create_feedback_keyboard(),
                         )
                         return
 
