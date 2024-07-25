@@ -889,6 +889,10 @@ def load_handlers_admin(dp, bot: Bot):
             from applications import show_new_item_for_admin
             async with AsyncSessionLocal() as session:
                 async with session.begin():
+                    b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
+                    if not b:
+                        return
+
                     result = await session.execute(
                         select(Item).filter(
                             Item.location == "None"
@@ -918,6 +922,10 @@ def load_handlers_admin(dp, bot: Bot):
             )
             async with AsyncSessionLocal() as session:
                 async with session.begin():
+                    b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
+                    if not b:
+                        return
+
                     result = await session.execute(
                         select(Feedback).filter(and_(
                             Feedback.type == "question",
@@ -1074,6 +1082,10 @@ def load_handlers_admin(dp, bot: Bot):
             )
             async with AsyncSessionLocal() as session:
                 async with session.begin():
+                    b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
+                    if not b:
+                        return
+
                     result = await session.execute(
                         select(Feedback).filter(
                             Feedback.type == "improvement"
