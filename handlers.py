@@ -947,7 +947,7 @@ def load_handlers(dp, bot: Bot):
                 async with session.begin():
                     result = await session.execute(
                         select(User).filter(
-                            User.telegram_user_id == callback_query.from_user.id)
+                            User.telegram_user_id == callback_query.message.chat.id)
                     )
                     user = result.scalars().first()
 
@@ -958,9 +958,18 @@ def load_handlers(dp, bot: Bot):
 
                     result = await session.execute(
                         select(Application).filter(
-                            Application.working_user_id == callback_query.from_user.id)
+                            Application.working_user_id == callback_query.message.chat.id)
                     )
                     application = result.scalars().first()
+
+                    if application.pay_type == "fixed":
+                        await send_state_message(
+                            state=state,
+                            message=callback_query.message,
+                            text="Отправьте номер карты на который вам нужно вернуть комиссию",
+                        )
+                        await state.set_state(States.user_card_number)
+                        return
 
                     mask = Mask(
                         application_id=application.id,
@@ -1008,6 +1017,101 @@ def load_handlers(dp, bot: Bot):
                 bot=bot
             )
         except Exception as e:
+            print(e)
+
+    @router.message(States.user_card_number)
+    async def read_user_card_number(message: types.Message, state: FSMContext):
+        try:
+            number = int(message.text)
+            if len(message.text) != 16:
+                raise Exception("Invalid length")
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(User).filter(
+                            User.telegram_user_id == message.from_user.id)
+                    )
+                    user = result.scalars().first()
+
+                    result = await session.execute(
+                        select(User).filter(User.in_working == False)
+                    )
+                    other_users = result.scalars().all()
+
+                    result = await session.execute(
+                        select(Application).filter(
+                            Application.working_user_id == message.from_user.id)
+                    )
+                    application = result.scalars().first()
+
+                    result = await session.execute(
+                        select(User).filter(User.admin == True)
+                    )
+                    admin_users = result.scalars().all()
+
+                    for u in admin_users:
+                        try:
+                            text = (f"Пользователь отменил заявку, требуется вернуть комиссию в размере "
+                                    f"{application.com_value} руб. на карту <b>{number}</b>")
+                            await bot.send_message(
+                                chat_id=u.telegram_chat_id,
+                                text=text
+                            )
+                        except:
+                            ...
+
+                    mask = Mask(
+                        application_id=application.id,
+                        user_id=user.id,
+                        telegram_user_id=message.from_user.id,
+                    )
+                    session.add(mask)
+
+                    application.in_working = False
+                    application.working_user_id = -1
+                    application.pay_type = "None"
+                    application.com_value = 0
+                    user.in_working = False
+
+                    for u in other_users:
+                        if u.telegram_chat_id != message.chat.id:
+                            await show_application(
+                                session=session,
+                                application=application,
+                                bot=bot,
+                                chat_id=u.telegram_chat_id,
+                                user_city=u.city,
+                                is_admin=u.admin
+                            )
+
+                    await delete_message_ids(
+                        session=session,
+                        bot=bot,
+                        telegram_chat_id=message.chat.id
+                    )
+
+                await session.commit()
+
+            await delete_state_messages(
+                state=state,
+                bot=bot,
+                chat_id=message.chat.id
+            )
+
+            await state.clear()
+
+            await show_applications(
+                chat_id=message.chat.id,
+                user_id=message.chat.id,
+                bot=bot
+            )
+        except Exception as e:
+            await send_state_message(
+                state=state,
+                message=message,
+                text="Ошибка, повторите ввод",
+            )
+            await state.set_state(States.user_card_number)
             print(e)
 
     @router.callback_query(F.data == callbacks.PAID_COMM_CALLBACK)

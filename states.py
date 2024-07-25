@@ -13,6 +13,7 @@ class States(StatesGroup):
     finish_price = State()
     admin_change = State()
     report_date = State()
+    user_card_number = State()
     cities_to_add = State()
     cities_to_remove = State()
     fixed_commission = State()
