@@ -20,7 +20,7 @@ PAID_TEXT = "Я оплатил"
 ACTIVATE_ADMIN_CALLBACK = "activate_admin_callback"
 DEACTIVATE_ADMIN_CALLBACK = "deactivate_admin_callback"
 
-DELETE_ADMIN_MESSAGES_CALLBACK = "delete_admin_messages_callback"
+DELETE_MESSAGES_CALLBACK = "delete_admin_messages_callback"
 
 ADD_CITIES_CALLBACK = "add_cities_callback"
 DELETE_CITIES_CALLBACK = "delete_cities_callback"
@@ -31,3 +31,10 @@ CHANGE_PERCENT_CALLBACK = "change_percent_callback"
 CHANGE_REQUISITES_CALLBACK = "change_requisites_callback"
 
 ADD_CITY_TO_ITEM_CALLBACK = "add_city_to_item_callback"
+
+SEND_FEEDBACK_CALLBACK = "send_feedback_callback"
+
+SEND_QUESTION_CALLBACK = "send_question_callback"
+SEND_IMPROVEMENT_CALLBACK = "send_improvement_callback"
+
+ANSWER_QUESTION_CALLBACK = "answer_question_callback"

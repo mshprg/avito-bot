@@ -166,17 +166,17 @@ async def handle_webhook_message(request):
             if application_db is not None:
                 d['is_f'] = False
 
-    if True:
-        # if len(messages) <= 2:
-        await add_new_application(
-                user_id=user_id,
-                chat_id=chat_id,
-                m_id=m_id,
-                m_type=m_type,
-                content=content,
-                author_id=author_id,
-                created=created
-        )
+    if d['is_f']:
+        if len(messages) <= 2:
+            await add_new_application(
+                    user_id=user_id,
+                    chat_id=chat_id,
+                    m_id=m_id,
+                    m_type=m_type,
+                    content=content,
+                    author_id=author_id,
+                    created=created
+            )
     else:
         await send_user_message(
             user_id=user_id,

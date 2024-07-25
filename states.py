@@ -20,6 +20,8 @@ class States(StatesGroup):
     requisites = State()
     add_location = State()
     previous_state = State()
+    feedback = State()
+    visible_feedbacks = State()
 
     ids = State()
     admin_ids = State()
@@ -29,3 +31,6 @@ class States(StatesGroup):
     make_admin_ids = State()
     report_ids = State()
     location_ids = State()
+    feedback_admin_ids = State()
+
+    feedback_ids = State()

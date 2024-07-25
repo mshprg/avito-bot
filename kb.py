@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import callbacks
 
@@ -26,8 +26,31 @@ def create_cities_keyboard(cities):
     return ReplyKeyboardMarkup(keyboard=buttons, one_time_keyboard=True)
 
 
+def create_feedback_keyboard():
+    button = KeyboardButton(text="Обратная связь")
+    return ReplyKeyboardMarkup(keyboard=[[button]])
+
+def create_feedback_actions_keyboard():
+    return generate_inline_markup([
+        ['Задать вопрос', callbacks.SEND_QUESTION_CALLBACK],
+        ['Предложить улучшение', callbacks.SEND_IMPROVEMENT_CALLBACK]
+    ])
+
+
+def create_clear_feedback_keyboard():
+    return generate_inline_markup([
+        ['Удалить сообщения', callbacks.DELETE_MESSAGES_CALLBACK],
+    ])
+
+
+def create_answer_feedback_keyboard():
+    return generate_inline_markup([
+        ['Ответить на вопрос', callbacks.ANSWER_QUESTION_CALLBACK],
+    ])
+
+
 def create_video_keyboard():
-    return generate_inline_markup([['Я посмотрел видео', callbacks.WATCHED_VIDEO_CALLBACK]])
+    return generate_inline_markup([['Показать заявки', callbacks.WATCHED_VIDEO_CALLBACK]])
 
 
 def create_application_keyboard():
@@ -90,7 +113,7 @@ def create_deactivate_admin_keyboard():
 
 def create_delete_admin_messages_keyboard():
     return generate_inline_markup([
-        ['Удалить сообщения для администратора', callbacks.DELETE_ADMIN_MESSAGES_CALLBACK],
+        ['Удалить сообщения для администратора', callbacks.DELETE_MESSAGES_CALLBACK],
     ])
 
 
@@ -98,7 +121,7 @@ def create_manage_cities_keyboard():
     return generate_inline_markup([
         ['Добавить города', callbacks.ADD_CITIES_CALLBACK],
         ['Удалить города', callbacks.DELETE_CITIES_CALLBACK],
-        ['Удалить сообщения для администратора', callbacks.DELETE_ADMIN_MESSAGES_CALLBACK],
+        ['Удалить сообщения для администратора', callbacks.DELETE_MESSAGES_CALLBACK],
     ])
 
 
@@ -106,14 +129,14 @@ def create_manage_commission_keyboard():
     return generate_inline_markup([
         ['Изменить фикс. комиссию', callbacks.CHANGE_FIXED_CALLBACK],
         ['Изменить комиссию в процентах', callbacks.CHANGE_PERCENT_CALLBACK],
-        ['Удалить сообщения для администратора', callbacks.DELETE_ADMIN_MESSAGES_CALLBACK],
+        ['Удалить сообщения для администратора', callbacks.DELETE_MESSAGES_CALLBACK],
     ])
 
 
 def create_manage_requisites_keyboard():
     return generate_inline_markup([
         ['Изменить номер карты', callbacks.CHANGE_REQUISITES_CALLBACK],
-        ['Удалить сообщения для администратора', callbacks.DELETE_ADMIN_MESSAGES_CALLBACK],
+        ['Удалить сообщения для администратора', callbacks.DELETE_MESSAGES_CALLBACK],
     ])
 
 

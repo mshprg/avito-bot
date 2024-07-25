@@ -19,6 +19,7 @@ from message_processing import delete_state_messages, to_date, send_state_messag
 from models.application import Application
 from models.city import City
 from models.comission import Commission
+from models.feedback import Feedback
 from models.item import Item
 from models.item_addiction import ItemAddiction
 from models.requisites import Requisites
@@ -712,15 +713,17 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.DELETE_ADMIN_MESSAGES_CALLBACK)
+    @router.callback_query(F.data == callbacks.DELETE_MESSAGES_CALLBACK)
     async def delete_admin_messages(callback_query: types.CallbackQuery, state: FSMContext):
         state_ids = ["admin_ids", "commission_ids", "requisites_ids", "cities_ids", "make_admin_ids", "report_ids",
-                     "location_ids"]
+                     "location_ids", "feedback_ids", "feedback_admin_ids"]
         try:
             for state_name in state_ids:
                 data = await state.get_data()
                 ids = data.get(state_name, [])
                 if callback_query.message.message_id in ids:
+                    if state_name == "feedback_admin_ids":
+                        await state.update_data(visible_feedbacks={})
                     await delete_state_messages(
                         state=state,
                         bot=bot,
@@ -882,26 +885,243 @@ def load_handlers_admin(dp, bot: Bot):
 
     @router.message(Command('items'), StateFilter(None, States.message))
     async def get_none_items(message: types.Message):
-        from applications import show_new_item_for_admin
-        async with AsyncSessionLocal() as session:
-            async with session.begin():
-                result = await session.execute(
-                    select(Item).filter(
-                        Item.location == "None"
+        try:
+            from applications import show_new_item_for_admin
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Item).filter(
+                            Item.location == "None"
+                        )
                     )
-                )
-                items = result.scalars().all()
+                    items = result.scalars().all()
 
-                for item in items:
-                    await show_new_item_for_admin(
-                        session=session,
-                        bot=bot,
-                        url=item.url,
-                        item_id=item.id,
-                        avito_item_id=item.avito_item_id,
-                        chat_id=message.chat.id
+                    for item in items:
+                        await show_new_item_for_admin(
+                            session=session,
+                            bot=bot,
+                            url=item.url,
+                            item_id=item.id,
+                            avito_item_id=item.avito_item_id,
+                            chat_id=message.chat.id
+                        )
+        except Exception as e:
+            print(e)
+
+    @router.message(Command('questions'), StateFilter(None, States.message))
+    async def get_feedback(message: types.Message, state: FSMContext):
+        try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id,
+                state_name="feedback_admin_ids"
+            )
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Feedback).filter(and_(
+                            Feedback.type == "question",
+                            Feedback.answer == ""
+                        ))
                     )
+                    feedbacks = result.scalars().all()
 
+                    if len(feedbacks) == 0:
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text="Нет неотвеченных вопросов",
+                            state_name="feedback_admin_ids",
+                            keyboard=kb.create_delete_admin_messages_keyboard()
+                        )
+                        return
 
+                    messages = []
+                    for feedback in feedbacks:
+                        result = await session.execute(
+                            select(User).filter(
+                                User.telegram_user_id == feedback.telegram_user_id
+                            )
+                        )
+                        user = result.scalars().first()
+
+                        if user:
+                            name = user.name
+                        else:
+                            name = "неизвестный пользователь"
+
+                        text = f"<b>Спрашивает {name}</b>\n\n{feedback.text}"
+                        m = await send_state_message(
+                            state=state,
+                            message=message,
+                            text=text,
+                            keyboard=kb.create_answer_feedback_keyboard(),
+                            parse_mode=ParseMode.HTML,
+                            state_name="feedback_admin_ids",
+                        )
+
+                        messages.append({
+                            'message_id': m.message_id,
+                            'feedback': feedback.to_dict()
+                        })
+
+                    state_feedback = {
+                        'messages': messages,
+                        'current_feedback': None,
+                    }
+
+                    await state.update_data(visible_feedbacks=state_feedback)
+
+            await send_state_message(
+                state=state,
+                message=message,
+                text="Действия",
+                keyboard=kb.create_delete_admin_messages_keyboard(),
+                state_name="feedback_admin_ids",
+            )
+        except Exception as e:
+            print(e)
+
+    @router.callback_query(F.data == callbacks.ANSWER_QUESTION_CALLBACK)
+    async def answer_question_callback(callback_query: types.CallbackQuery, state: FSMContext):
+        try:
+            data = await state.get_data()
+            state_feedback: dict = data.get("visible_feedbacks", {})
+            messages = state_feedback.get("messages", [])
+
+            feedback = None
+            for m in messages:
+                if m['message_id'] == callback_query.message.message_id:
+                    feedback = m['feedback']
+
+            if feedback is None:
+                print("Error")
+                return
+
+            state_feedback['current_feedback'] = feedback
+
+            await send_state_message(
+                state=state,
+                message=callback_query.message,
+                text="Введите ответ",
+                state_name="feedback_admin_ids",
+            )
+
+            await state.update_data(visible_feedbacks=state_feedback)
+
+            await state.set_state(States.visible_feedbacks)
+
+        except Exception as e:
+            print(e)
+
+    @router.message(States.visible_feedbacks)
+    async def read_answer(message: types.Message, state: FSMContext):
+        try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id,
+                state_name="feedback_admin_ids"
+            )
+
+            data = await state.get_data()
+            state_feedback: dict = data.get("visible_feedbacks", {})
+            feedback = state_feedback.get("current_feedback", None)
+
+            if feedback is None:
+                print("Error")
+                return
+
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Feedback).filter(
+                            Feedback.id == feedback['id']
+                        )
+                    )
+                    feedback = result.scalars().first()
+
+                    feedback.answer = message.text
+
+                await session.commit()
+
+            await send_state_message(
+                state=state,
+                message=message,
+                text="Ответ сохранён",
+                keyboard=kb.create_delete_admin_messages_keyboard(),
+                state_name="feedback_admin_ids",
+            )
+
+            state_feedback['current_feedback'] = None
+            await state.update_data(visible_feedbacks=state_feedback)
+        except Exception as e:
+            await send_state_message(
+                state=state,
+                message=message,
+                text="Ошибка, введите текст заново",
+                state_name="feedback_admin_ids",
+            )
+            await state.set_state(States.visible_feedbacks)
+            print(e)
+
+    @router.message(Command('improvements'), StateFilter(None, States.message))
+    async def get_improvements(message: types.Message, state: FSMContext):
+        try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id,
+                state_name="feedback_admin_ids"
+            )
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Feedback).filter(
+                            Feedback.type == "improvement"
+                        )
+                    )
+                    feedbacks = result.scalars().all()
+
+                    if len(feedbacks) == 0:
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text="Нет предложений по улучшению",
+                            state_name="feedback_admin_ids",
+                            keyboard=kb.create_delete_admin_messages_keyboard()
+                        )
+                        return
+
+                    for feedback in feedbacks:
+                        result = await session.execute(
+                            select(User).filter(
+                                User.telegram_user_id == feedback.telegram_user_id
+                            )
+                        )
+                        user = result.scalars().first()
+
+                        if user:
+                            name = user.name
+                        else:
+                            name = "неизвестный пользователь"
+
+                        text = f"<b>Предлагает {name}</b>\n\n{feedback.text}"
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text=text,
+                            parse_mode=ParseMode.HTML,
+                            state_name="feedback_admin_ids",
+                        )
+
+            await send_state_message(
+                state=state,
+                message=message,
+                text="Действия",
+                keyboard=kb.create_delete_admin_messages_keyboard(),
+                state_name="feedback_admin_ids",
+            )
+
+        except Exception as e:
+            print(e)
 
     dp.include_router(router)

@@ -5,7 +5,7 @@ from aiogram import Router, types, F, Bot
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from sqlalchemy import select
+from sqlalchemy import select, and_
 import callbacks
 import kb
 import s3_cloud
@@ -17,6 +17,7 @@ from models.addiction import Addiction
 from models.application import Application
 from models.city import City
 from models.comission import Commission
+from models.feedback import Feedback
 from models.image import Image
 from models.mask import Mask
 from models.requisites import Requisites
@@ -117,6 +118,55 @@ def load_handlers(dp, bot: Bot):
                     user_id=message.from_user.id,
                     bot=bot
                 )
+        except Exception as e:
+            print(e)
+
+    @router.message(Command('my-questions'), StateFilter(None, States.message))
+    async def get_my_questions(message: types.Message, state: FSMContext):
+        try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id,
+                state_name="feedback_ids",
+            )
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Feedback).filter(and_(
+                            Feedback.telegram_user_id == message.from_user.id,
+                            Feedback.type == "question"
+                        ))
+                    )
+                    feedbacks = result.scalars().all()
+
+                    if len(feedbacks) == 0:
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text="Вы не задавали вопросов",
+                            keyboard=kb.create_clear_feedback_keyboard(),
+                            state_name="feedback_ids",
+                        )
+                        return
+
+                    for feedback in feedbacks:
+                        answer = "Пока нет ответа" if len(feedback.answer) == 0 else feedback.answer
+                        text = f"<b>Ваш вопрос</b>:\n{feedback.text}\n\n<b>Ответ от администратора:</b>\n{answer}"
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text=text,
+                            parse_mode=ParseMode.HTML,
+                            state_name="feedback_ids",
+                        )
+
+                    await send_state_message(
+                        state=state,
+                        message=message,
+                        text="Действия",
+                        keyboard=kb.create_clear_feedback_keyboard(),
+                        state_name="feedback_ids",
+                    )
         except Exception as e:
             print(e)
 
@@ -269,30 +319,28 @@ def load_handlers(dp, bot: Bot):
                             )
                             session.add(new_city)
 
-                    user_data = await state.get_data()
-
-                    admin = False
-                    if message.from_user.id == config.ROOT_USER_ID:
-                        admin = True
-
-                    user = User(
-                        name=user_data.get("name"),
-                        phone=user_data.get("phone"),
-                        city=city,
-                        telegram_user_id=message.from_user.id,
-                        telegram_chat_id=message.chat.id,
-                        admin=admin,
-                        in_working=False
-                    )
-
-                    session.add(user)
-
                 await session.commit()
+
+            await state.update_data(city=message.text)
+
+            policy_url = 'https://telegra.ph/Politika-obrabotki-personalnyh-dannyh-07-24-2'
+            agreement_url = 'https://telegra.ph/Polzovatelskoe-soglashenie-07-24-11'
+
+            text = (f"Нажимая на кнопку <b>Показать заявки</b>, вы соглашаетесь с <a href='{policy_url}'>Политикой "
+                    f"обработки персональных данных</a> и <a href='{agreement_url}'>Пользовательским "
+                    f"соглашением</a>\n<b>Видео поможет ознакомиться с работой бота</b>")
 
             await send_state_message(
                 state=state,
                 message=message,
-                text="Видео поможет вам быстро ознакомиться с работой бота",
+                text="Ознакомительно видео:",
+                keyboard=types.ReplyKeyboardRemove()
+            )
+
+            await send_state_message(
+                state=state,
+                message=message,
+                text=text,
                 parse_mode=ParseMode.HTML,
                 keyboard=kb.create_video_keyboard()
             )
@@ -302,6 +350,26 @@ def load_handlers(dp, bot: Bot):
     @router.callback_query(F.data == callbacks.WATCHED_VIDEO_CALLBACK)
     async def show_application_for_user(callback_query: types.CallbackQuery, state: FSMContext):
 
+        async with AsyncSessionLocal() as session:
+            async with session.begin():
+                user_data = await state.get_data()
+
+                admin = False
+                if callback_query.message.from_user.id == config.ROOT_USER_ID:
+                    admin = True
+
+                user = User(
+                    name=user_data.get("name"),
+                    phone=user_data.get("phone"),
+                    city=user_data.get("city"),
+                    telegram_user_id=callback_query.message.chat.id,
+                    telegram_chat_id=callback_query.message.chat.id,
+                    admin=admin,
+                    in_working=False
+                )
+
+                session.add(user)
+
         await delete_state_messages(
             state=state,
             bot=bot,
@@ -310,11 +378,108 @@ def load_handlers(dp, bot: Bot):
 
         await state.clear()
 
+        await send_state_message(
+            state=state,
+            message=callback_query.message,
+            text="Список заявок",
+            keyboard=kb.create_feedback_keyboard()
+        )
+
         await show_applications(
             chat_id=callback_query.message.chat.id,
             user_id=callback_query.message.chat.id,
             bot=bot
         )
+
+    @router.message(F.text == "Обратная связь")
+    async def send_feedback_callback(message: types.Message, state: FSMContext):
+        try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id,
+                state_name="feedback_ids"
+            )
+            await send_state_message(
+                state=state,
+                message=message,
+                text="*Действия:*",
+                parse_mode=ParseMode.MARKDOWN_V2,
+                keyboard=kb.create_feedback_actions_keyboard(),
+                state_name="feedback_ids"
+            )
+        except Exception as e:
+            print(e)
+
+    async def send_feedback_message(text, type_feedback, callback_query: types.CallbackQuery, state: FSMContext):
+        try:
+            await send_state_message(
+                state=state,
+                message=callback_query.message,
+                text=text,
+                state_name="feedback_ids",
+            )
+
+            await state.update_data(feedback=type_feedback)
+            await state.set_state(States.feedback)
+        except Exception as e:
+            print(e)
+
+    @router.callback_query(F.data == callbacks.SEND_QUESTION_CALLBACK)
+    async def send_question_callback(callback_query: types.CallbackQuery, state: FSMContext):
+        await send_feedback_message(
+            text="Отправьте вопрос",
+            type_feedback="question",
+            callback_query=callback_query,
+            state=state
+        )
+
+    @router.callback_query(F.data == callbacks.SEND_IMPROVEMENT_CALLBACK)
+    async def send_improvement_callback(callback_query: types.CallbackQuery, state: FSMContext):
+        await send_feedback_message(
+            text="Предложите улучшение",
+            type_feedback="improvement",
+            callback_query=callback_query,
+            state=state
+        )
+
+    @router.message(States.feedback)
+    async def read_feedback(message: types.Message, state: FSMContext):
+        try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id,
+                state_name="feedback_ids"
+            )
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    user_data = await state.get_data()
+                    type_feedback = user_data.get("feedback", "None")
+                    feedback = Feedback(
+                        type=type_feedback,
+                        text=message.text,
+                        telegram_user_id=message.from_user.id
+                    )
+
+                    session.add(feedback)
+
+                await session.commit()
+
+            await send_state_message(
+                state=state,
+                message=message,
+                text="Запрос отправлен",
+                keyboard=kb.create_clear_feedback_keyboard(),
+                state_name="feedback_ids",
+            )
+        except Exception as e:
+            await send_state_message(
+                state=state,
+                message=message,
+                text="Ошибка, введите текст заново",
+                state_name="feedback_ids",
+            )
+            await state.set_state(States.feedback)
+            print(e)
 
     @router.callback_query(F.data == callbacks.TAKE_APPLICATION_CALLBACK)
     async def select_application(callback_query: types.CallbackQuery):
