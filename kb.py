@@ -64,13 +64,17 @@ def create_application_admin_keyboard():
 
 def create_price_keyboard(percent, fixed):
     return generate_inline_markup([
-        [f'{percent}% от выручки', callbacks.SET_APPLICATION_CALLBACK],
+        [f'{percent}% от выручки', callbacks.OPEN_APPLICATION_CALLBACK],
         [f'{fixed} руб.', callbacks.SELECT_FIXED_CALLBACK]
     ])
 
 
+def create_paid_fixed_callback():
+    return generate_inline_markup([['Я оплатил', callbacks.PAID_FIXED_CALLBACK]])
+
+
 def create_confirmation_keyboard():
-    return generate_inline_markup([['Я оплатил', callbacks.SET_APPLICATION_CALLBACK]])
+    return generate_inline_markup([['Открыть заявку', callbacks.OPEN_APPLICATION_CALLBACK]])
 
 
 def create_application_actions_keyboard():
@@ -144,4 +148,23 @@ def create_manage_requisites_keyboard():
 def create_add_city_keyboard():
     return generate_inline_markup([
         ['Добавить локацию', callbacks.ADD_CITY_TO_ITEM_CALLBACK],
+    ])
+
+
+def create_close_application_keyboard():
+    return generate_inline_markup([
+        ['Закрыть заявку', callbacks.CLOSE_APPLICATION_CALLBACK],
+    ])
+
+
+def create_new_confirmation_actions():
+    return generate_inline_markup([
+        ['Подтвердить перевод', callbacks.APPROVED_CONF_CALLBACK],
+        ['Удалить сообщение', callbacks.DELETE_CONF_CALLBACK],
+    ])
+
+
+def create_list_confirmations_keyboard():
+    return generate_inline_markup([
+        ['Подтвердить перевод', callbacks.APPROVED_CONF_CALLBACK],
     ])

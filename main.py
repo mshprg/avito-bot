@@ -75,7 +75,7 @@ async def start_bot():
 
             if len(cities_db) == 0:
                 city = City(
-                    city="Москва"
+                    city="Калининград"
                 )
                 session.add(city)
 

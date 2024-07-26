@@ -12,6 +12,7 @@ from message_processing import send_state_message, send_state_media
 from models.addiction import Addiction
 from models.application import Application
 from db import AsyncSessionLocal
+from models.confirmation_addiction import ConfirmationAddiction
 from models.item_addiction import ItemAddiction
 from models.mask import Mask
 from models.user import User
@@ -269,5 +270,31 @@ async def show_new_item_for_admin(session, bot: Bot, url, item_id, avito_item_id
                 telegram_chat_id=user.telegram_chat_id,
             )
             session.add(new_item_addiction)
+        except:
+            ...
+
+
+async def show_confirmation_for_admins(session, confirmation, author_user, bot: Bot):
+    result = await session.execute(
+        select(User).filter(User.admin == True)
+    )
+    users = result.scalars().all()
+
+    for user in users:
+        try:
+            text = (f"Перевод от {author_user.name}\nНомер телефона: <b>{author_user.phone}</b>\nКод пользователя: "
+                    f"<b>{confirmation.telegram_user_id}</b>\nСумма: <b>{confirmation.amount}</b>")
+            m = await bot.send_message(
+                chat_id=user.telegram_chat_id,
+                text=text,
+                reply_markup=kb.create_new_confirmation_actions(),
+                parse_mode=ParseMode.HTML
+            )
+            new_conf_addiction = ConfirmationAddiction(
+                confirmation_id=confirmation.id,
+                telegram_message_id=m.message_id,
+                telegram_chat_id=user.telegram_chat_id,
+            )
+            session.add(new_conf_addiction)
         except:
             ...

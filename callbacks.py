@@ -38,3 +38,13 @@ SEND_QUESTION_CALLBACK = "send_question_callback"
 SEND_IMPROVEMENT_CALLBACK = "send_improvement_callback"
 
 ANSWER_QUESTION_CALLBACK = "answer_question_callback"
+
+CLOSE_APPLICATION_CALLBACK = "close_application_callback"
+OPEN_APPLICATION_CALLBACK = "open_application_callback"
+
+PAID_FIXED_CALLBACK = "paid_fixed_callback"
+
+DELETE_CONF_CALLBACK = "delete_conf_callback"
+APPROVED_CONF_CALLBACK = "approved_conf_callback"
+
+

@@ -23,3 +23,4 @@ class Application(Base):
     pay_type: str = Column(String, nullable=True)
     com_value: int = Column(Integer, nullable=False, default=0)
     price: str = Column(String, nullable=False, default="0")
+    waiting_confirmation: bool = Column(Boolean, nullable=False, default=False)

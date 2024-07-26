@@ -17,6 +17,8 @@ from models.addiction import Addiction
 from models.application import Application
 from models.city import City
 from models.comission import Commission
+from models.confirmation import Confirmation
+from models.confirmation_addiction import ConfirmationAddiction
 from models.feedback import Feedback
 from models.item import Item
 from models.item_addiction import ItemAddiction
@@ -28,12 +30,15 @@ from states import States
 def load_handlers_admin(dp, bot: Bot):
     router = Router()
 
+    async def reset_state(state: FSMContext):
+        data = await state.get_data()
+        await state.clear()
+        await state.update_data(data)
+
     @router.message(Command('cancel'), StateFilter("*"))
     async def cancel(message: types.Message, state: FSMContext):
         try:
-            data = await state.get_data()
-            await state.clear()
-            await state.update_data(data)
+            await reset_state(state)
             async with AsyncSessionLocal() as session:
                 async with session.begin():
                     result = await session.execute(
@@ -51,10 +56,14 @@ def load_handlers_admin(dp, bot: Bot):
                 chat_id=message.chat.id,
                 message_id=message.message_id
             )
+            await bot.send_message(
+                chat_id=message.chat.id,
+                text="Действие отменено"
+            )
         except Exception as e:
             print(e)
 
-    @router.message(Command('reload'), StateFilter(None, States.message))
+    @router.message(Command('reload'), StateFilter(States.message))
     async def reload(message: types.Message, state: FSMContext):
         from message_processing import delete_message_ids
         from applications import show_applications, show_messages_for_application
@@ -160,7 +169,7 @@ def load_handlers_admin(dp, bot: Bot):
 
         return True
 
-    @router.message(Command('admins'), StateFilter(None, States.message))
+    @router.message(Command('admins'), StateFilter(States.message))
     async def show_admins(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -179,12 +188,20 @@ def load_handlers_admin(dp, bot: Bot):
                         )
                         users = result.scalars().all()
 
+                        if len(users) == 0:
+                            await send_state_message(
+                                state=state,
+                                message=message,
+                                text="Пусто",
+                                state_name="admin_ids"
+                            )
+                            return
+
                         for user in users:
                             text = f"<b>{user.name}\n\n{user.phone}\n\n{user.city}</b>"
                             await send_state_message(
                                 state=state,
-                                bot=bot,
-                                chat_id=message.chat.id,
+                                message=message,
                                 text=text,
                                 parse_mode=ParseMode.HTML,
                                 state_name="admin_ids"
@@ -192,8 +209,7 @@ def load_handlers_admin(dp, bot: Bot):
 
                 await send_state_message(
                     state=state,
-                    bot=bot,
-                    chat_id=message.chat.id,
+                    message=message,
                     text="Действия",
                     keyboard=kb.create_delete_admin_messages_keyboard(),
                     state_name="admin_ids"
@@ -201,7 +217,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('commission'), StateFilter(None, States.message))
+    @router.message(Command('commission'), StateFilter(States.message))
     async def check_commission(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -357,7 +373,7 @@ def load_handlers_admin(dp, bot: Bot):
             )
             await state.set_state(States.percent_commission)
 
-    @router.message(Command('requisites'), StateFilter(None, States.message))
+    @router.message(Command('requisites'), StateFilter(States.message))
     async def check_requisites(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -456,7 +472,7 @@ def load_handlers_admin(dp, bot: Bot):
             )
             await state.set_state(States.requisites)
 
-    @router.message(Command('cities'), StateFilter(None, States.message))
+    @router.message(Command('cities'), StateFilter(States.message))
     async def check_cities(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -643,7 +659,7 @@ def load_handlers_admin(dp, bot: Bot):
 
         return False
 
-    @router.message(Command('mkadmin'), StateFilter(None, States.message))
+    @router.message(Command('mkadmin'), StateFilter(States.message))
     async def make_admin(message: types.Message, state: FSMContext):
         try:
             b = await change_admin_command_handler(
@@ -658,7 +674,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('rmadmin'), StateFilter(None, States.message))
+    @router.message(Command('rmadmin'), StateFilter(States.message))
     async def delete_admin(message: types.Message, state: FSMContext):
         try:
             b = await change_admin_command_handler(
@@ -733,7 +749,7 @@ def load_handlers_admin(dp, bot: Bot):
             )
             await state.set_state(States.admin_change)
 
-    @router.message(Command('report'), StateFilter(None, States.message))
+    @router.message(Command('report'), StateFilter(States.message))
     async def generate_report(message: types.Message, state: FSMContext):
         try:
             async with AsyncSessionLocal() as session:
@@ -820,13 +836,15 @@ def load_handlers_admin(dp, bot: Bot):
                                 text="За данный период нет новых заявок"
                             )
 
+            await reset_state(state)
+
         except Exception as e:
             print(e)
 
     @router.callback_query(F.data == callbacks.DELETE_MESSAGES_CALLBACK)
     async def delete_admin_messages(callback_query: types.CallbackQuery, state: FSMContext):
         state_ids = ["admin_ids", "commission_ids", "requisites_ids", "cities_ids", "make_admin_ids", "report_ids",
-                     "location_ids", "feedback_ids", "feedback_admin_ids"]
+                     "location_ids", "feedback_ids", "feedback_admin_ids", "confirmation_admin_ids"]
         try:
             for state_name in state_ids:
                 data = await state.get_data()
@@ -834,13 +852,15 @@ def load_handlers_admin(dp, bot: Bot):
                 if callback_query.message.message_id in ids:
                     if state_name == "feedback_admin_ids":
                         await state.update_data(visible_feedbacks={})
+                    elif state_name == "confirmation_admin_ids":
+                        await state.update_data(visible_confirmations={})
                     await delete_state_messages(
                         state=state,
                         bot=bot,
                         chat_id=callback_query.message.chat.id,
                         state_name=state_name,
                     )
-                    await state.clear()
+                    await reset_state(state)
 
             async with AsyncSessionLocal() as session:
                 async with session.begin():
@@ -854,16 +874,6 @@ def load_handlers_admin(dp, bot: Bot):
 
                     if user.in_working:
                         await state.set_state(States.message)
-
-                        result = await session.execute(
-                            select(Application).filter(Application.working_user_id == user.telegram_user_id)
-                        )
-                        application = result.scalars().first()
-
-                        await state.update_data(avito_info={
-                            'chat_id': application.avito_chat_id,
-                            'user_id': application.user_id,
-                        })
         except Exception as e:
             print(e)
 
@@ -993,7 +1003,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('items'), StateFilter(None, States.message))
+    @router.message(Command('items'), StateFilter(States.message))
     async def get_none_items(message: types.Message, state: FSMContext):
         try:
             from applications import show_new_item_for_admin
@@ -1010,6 +1020,13 @@ def load_handlers_admin(dp, bot: Bot):
                     )
                     items = result.scalars().all()
 
+                    if len(items) == 0:
+                        await bot.send_message(
+                            chat_id=message.chat.id,
+                            text="Нет новых объявлений"
+                        )
+                        return
+
                     for item in items:
                         await show_new_item_for_admin(
                             session=session,
@@ -1022,7 +1039,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('questions'), StateFilter(None, States.message))
+    @router.message(Command('questions'), StateFilter(States.message))
     async def get_feedback(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -1182,7 +1199,7 @@ def load_handlers_admin(dp, bot: Bot):
             await state.set_state(States.visible_feedbacks)
             print(e)
 
-    @router.message(Command('improvements'), StateFilter(None, States.message))
+    @router.message(Command('improvements'), StateFilter(States.message))
     async def get_improvements(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -1243,6 +1260,177 @@ def load_handlers_admin(dp, bot: Bot):
                 state_name="feedback_admin_ids",
             )
 
+        except Exception as e:
+            print(e)
+
+    @router.message(Command("confirmations"), StateFilter(States.message))
+    async def get_confirmations(message: types.Message, state: FSMContext):
+        try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id,
+                state_name="confirmation_admin_ids"
+            )
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Confirmation)
+                    )
+                    confirmations = result.scalars().all()
+
+                    if len(confirmations) == 0:
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text="Переводов не найдено",
+                            keyboard=kb.create_delete_admin_messages_keyboard(),
+                            state_name="confirmation_admin_ids",
+                        )
+                        return
+
+                    user_ids = [c.telegram_user_id for c in confirmations]
+                    result = await session.execute(
+                        select(User).filter(User.telegram_user_id.in_(user_ids))
+                    )
+                    users = result.scalars().all()
+                    d = {}
+
+                    for u in users:
+                        d[u.telegram_user_id] = u
+
+                    visible_confirmations = []
+                    for c in confirmations:
+                        text = (f"<b>Подтверждение от пользователя {d[c.telegram_user_id].name}</b>\nНомер телефона: "
+                                f"{d[c.telegram_user_id].phone}\nКод: <b>{c.telegram_user_id}</b>\nСумма: <b>{c.amount}</b>")
+                        m = await send_state_message(
+                            state=state,
+                            message=message,
+                            text=text,
+                            parse_mode=ParseMode.HTML,
+                            keyboard=kb.create_list_confirmations_keyboard(),
+                            state_name="confirmation_admin_ids",
+                        )
+                        visible_confirmations.append({
+                            'message_id': m.message_id,
+                            'confirmation': c.to_dict()
+                        })
+
+                    await state.update_data(visible_confirmations=visible_confirmations)
+
+                    await send_state_message(
+                        state=state,
+                        message=message,
+                        text="Действия",
+                        keyboard=kb.create_delete_admin_messages_keyboard(),
+                        state_name="confirmation_admin_ids",
+                    )
+
+                await session.commit()
+
+        except Exception as e:
+            print(e)
+
+    @router.callback_query(F.data == callbacks.APPROVED_CONF_CALLBACK)
+    async def approved_confirmation_callback(callback_query: types.CallbackQuery, state: FSMContext):
+        try:
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    conf = None
+                    data = await state.get_data()
+                    visible_confirmations = data.get("visible_confirmations", [])
+
+                    for c in visible_confirmations:
+                        if c['message_id'] == callback_query.message.message_id:
+                            conf = c['confirmation']
+
+                    if conf is None:
+                        result = await session.execute(
+                            select(ConfirmationAddiction).filter(and_(
+                                ConfirmationAddiction.telegram_chat_id == callback_query.message.chat.id,
+                                ConfirmationAddiction.telegram_message_id == callback_query.message.message_id,
+                            ))
+                        )
+                        conf_addiction = result.scalars().first()
+                        result = await session.execute(
+                            select(Confirmation).filter(Confirmation.id == conf_addiction.confirmation_id)
+                        )
+                    else:
+                        result = await session.execute(
+                            select(Confirmation).filter(Confirmation.id == conf['id'])
+                        )
+                    confirmation = result.scalars().first()
+
+                    if confirmation is None:
+                        return
+
+                    if confirmation.type == "open":
+                        text = "Оплата подтверждена"
+                        await bot.edit_message_text(
+                            chat_id=confirmation.telegram_user_id,
+                            message_id=confirmation.telegram_message_id,
+                            text=text,
+                            reply_markup=kb.create_confirmation_keyboard()
+                        )
+                    elif confirmation.type == "close":
+                        text = "Оплата подтверждена"
+                        await bot.edit_message_text(
+                            chat_id=confirmation.telegram_user_id,
+                            message_id=confirmation.telegram_message_id,
+                            text=text,
+                            reply_markup=kb.create_close_application_keyboard()
+                        )
+
+                    result = await session.execute(
+                        select(ConfirmationAddiction).filter(ConfirmationAddiction.confirmation_id == confirmation.id)
+                    )
+                    conf_addictions = result.scalars().all()
+
+                    await bot.delete_message(
+                        chat_id=callback_query.message.chat.id,
+                        message_id=callback_query.message.message_id
+                    )
+
+                    for ca in conf_addictions:
+                        try:
+                            await bot.delete_message(
+                                chat_id=ca.telegram_chat_id,
+                                message_id=ca.telegram_message_id
+                            )
+                            await session.delete(ca)
+                        except:
+                            ...
+
+                    await session.delete(confirmation)
+
+                await session.commit()
+        except Exception as e:
+            print(e)
+
+    @router.callback_query(F.data == callbacks.DELETE_CONF_CALLBACK)
+    async def delete_conf_message(callback_query: types.CallbackQuery):
+        try:
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(ConfirmationAddiction).filter(and_(
+                            ConfirmationAddiction.telegram_chat_id == callback_query.message.chat.id,
+                            ConfirmationAddiction.telegram_message_id == callback_query.message.message_id,
+                        ))
+                    )
+                    conf_addiction = result.scalars().first()
+
+                    if conf_addiction:
+                        await session.delete(conf_addiction)
+
+                    try:
+                        await bot.delete_message(
+                            chat_id=callback_query.message.chat.id,
+                            message_id=callback_query.message.message_id
+                        )
+                    except:
+                        ...
+
+                await session.commit()
         except Exception as e:
             print(e)
 

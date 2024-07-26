@@ -1,5 +1,6 @@
 import io
 import re
+import time
 from time import sleep
 from aiogram import Router, types, F, Bot
 from aiogram.enums import ParseMode
@@ -17,6 +18,7 @@ from models.addiction import Addiction
 from models.application import Application
 from models.city import City
 from models.comission import Commission
+from models.confirmation import Confirmation
 from models.feedback import Feedback
 from models.image import Image
 from models.mask import Mask
@@ -31,7 +33,7 @@ media_groups = {}
 def load_handlers(dp, bot: Bot):
     router = Router()
 
-    @router.message(Command('myquestions'), StateFilter(None, States.message))
+    @router.message(Command('myquestions'), StateFilter(States.message))
     async def get_my_questions(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -416,7 +418,7 @@ def load_handlers(dp, bot: Bot):
                     )
                     application = result.scalars().first()
 
-                    if application is None or application.in_working:
+                    if application is None or application.in_working and application.waiting_confirmation:
                         await bot.send_message(
                             text="Данную зявку уже взяли",
                             chat_id=callback_query.message.chat.id
@@ -466,7 +468,7 @@ def load_handlers(dp, bot: Bot):
                     )
                     application = result.scalars().first()
 
-                    if application is None or application.in_working:
+                    if application is None or application.in_working or application.waiting_confirmation:
                         await bot.send_message(
                             text="Данную зявку уже взяли",
                             chat_id=callback_query.message.chat.id
@@ -478,20 +480,129 @@ def load_handlers(dp, bot: Bot):
                     )
                     requisites = result.scalars().first()
 
+                    result = await session.execute(
+                        select(Commission)
+                    )
+                    commission = result.scalars().first()
+
+                    text = (f"*Требуется оплатить комиссию:*\n\nНомер карты \- *{requisites.card_number}*\nCумма оплаты: "
+                            f"*{commission.fixed}* руб\nВ сообщении к переводу укажите номер: *{callback_query.from_user.id}*")
+
                     await bot.edit_message_text(
-                        text=f"*Требуется оплатить комиссию:*\n\nРеквизиты карты \- *{requisites.card_number}*",
+                        text=text,
                         chat_id=callback_query.message.chat.id,
                         message_id=callback_query.message.message_id,
-                        reply_markup=kb.create_confirmation_keyboard(),
+                        reply_markup=kb.create_paid_fixed_callback(),
                         parse_mode=ParseMode.MARKDOWN_V2,
                     )
 
                     await state.update_data(pay_type="fixed")
 
+                await session.commit()
+
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.SET_APPLICATION_CALLBACK)
+    @router.callback_query(F.data == callbacks.PAID_FIXED_CALLBACK)
+    async def paid_fixed_callback(callback_query: types.CallbackQuery):
+        from applications import show_confirmation_for_admins
+        try:
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    text = ("<b>НЕ УДАЛЯЙТЕ ЭТО СООБЩЕНИЕ</b>\nВы сможете открыть заявку как только администратор "
+                            "подтвердит перевод")
+
+                    await bot.edit_message_text(
+                        chat_id=callback_query.message.chat.id,
+                        message_id=callback_query.message.message_id,
+                        text=text,
+                        parse_mode=ParseMode.HTML,
+                    )
+
+                    result = await session.execute(
+                        select(Commission)
+                    )
+                    commission = result.scalars().first()
+
+                    result = await session.execute(
+                        select(User).filter(
+                            User.telegram_user_id == callback_query.from_user.id)
+                    )
+                    user = result.scalars().first()
+                    user.in_working = True
+
+                    confirmation = Confirmation(
+                        telegram_user_id=callback_query.from_user.id,
+                        telegram_message_id=callback_query.message.message_id,
+                        amount=commission.fixed,
+                        created=round(time.time() * 1000),
+                        type="open"
+                    )
+                    session.add(confirmation)
+                    await session.flush()
+
+                    result = await session.execute(
+                        select(Addiction).filter(and_(
+                            Addiction.telegram_message_id == callback_query.message.message_id,
+                            Addiction.telegram_chat_id == callback_query.message.chat.id
+                        ))
+                    )
+                    user_addiction = result.scalars().first()
+
+                    result = await session.execute(
+                        select(Application).filter(
+                            Application.id == user_addiction.application_id)
+                    )
+                    application = result.scalars().first()
+
+                    application.waiting_confirmation = True
+
+                    result = await session.execute(
+                        select(Addiction).filter(
+                            Addiction.application_id == user_addiction.application_id)
+                    )
+                    app_addictions = result.scalars().all()
+
+                    result = await session.execute(
+                        select(Addiction).filter(
+                            Addiction.telegram_chat_id == callback_query.message.chat.id)
+                    )
+                    current_user_addictions = result.scalars().all()
+
+                    for ad in app_addictions:
+                        if ad.telegram_message_id != callback_query.message.message_id:
+                            try:
+                                await bot.delete_message(
+                                    chat_id=ad.telegram_chat_id,
+                                    message_id=ad.telegram_message_id,
+                                )
+                            except:
+                                ...
+                            await session.delete(ad)
+
+                    for ad in current_user_addictions:
+                        if ad.telegram_message_id != callback_query.message.message_id:
+                            try:
+                                await bot.delete_message(
+                                    chat_id=ad.telegram_chat_id,
+                                    message_id=ad.telegram_message_id,
+                                )
+                            except:
+                                ...
+                            await session.delete(ad)
+
+                    await show_confirmation_for_admins(
+                        session=session,
+                        confirmation=confirmation,
+                        author_user=user,
+                        bot=bot
+                    )
+
+                await session.commit()
+        except Exception as e:
+            print(e)
+
+    @router.callback_query(F.data == callbacks.OPEN_APPLICATION_CALLBACK)
     async def set_application(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             u, a = None, None
@@ -521,6 +632,9 @@ def load_handlers(dp, bot: Bot):
 
                     user.in_working = True
 
+                    if user.admin:
+                        pay_type = "admin"
+
                     result = await session.execute(
                         select(Addiction).filter(
                             Addiction.telegram_message_id == callback_query.message.message_id)
@@ -539,6 +653,7 @@ def load_handlers(dp, bot: Bot):
                     )
                     application = result.scalars().first()
 
+                    application.waiting_confirmation = False
                     application.in_working = True
                     application.working_user_id = callback_query.from_user.id
                     application.pay_type = pay_type
@@ -629,8 +744,10 @@ def load_handlers(dp, bot: Bot):
                 async with AsyncSessionLocal() as session:
                     async with session.begin():
                         result = await session.execute(
-                            select(Application).filter(
-                                Application.working_user_id == message.from_user.id)
+                            select(Application).filter(and_(
+                                Application.working_user_id == message.from_user.id,
+                                Application.in_working == True
+                            ))
                         )
                         application = result.scalars().first()
 
@@ -744,8 +861,10 @@ def load_handlers(dp, bot: Bot):
                 async with AsyncSessionLocal() as session:
                     async with session.begin():
                         result = await session.execute(
-                            select(Application).filter(
-                                Application.working_user_id == message.from_user.id)
+                            select(Application).filter(and_(
+                                Application.working_user_id == message.from_user.id,
+                                Application.in_working == True,
+                            ))
                         )
                         application = result.scalars().first()
 
@@ -792,8 +911,10 @@ def load_handlers(dp, bot: Bot):
                     price = int(message.text)
 
                     result = await session.execute(
-                        select(Application).filter(
-                            Application.working_user_id == message.from_user.id)
+                        select(Application).filter(and_(
+                            Application.working_user_id == message.from_user.id,
+                            Application.in_working == True,
+                        ))
                     )
                     application = result.scalars().first()
 
@@ -810,18 +931,21 @@ def load_handlers(dp, bot: Bot):
                             select(Requisites)
                         )
                         requisites = result.scalars().first()
+                        text = (f"Вы выбрали оплату в процентах от стоимости заказа,\nк оплате <b>{to_pay} руб.</b"
+                                f">\nНомер карты - <b>{requisites.card_number}</b>\nНажмите на кнопку после того как "
+                                f"перевели нужную сумму\nВ сообщении к <b>обязательно</b> укажите код: <b>"
+                                f"{user.telegram_user_id}</b>"),
                         await send_state_message(
                             state=state,
                             message=message,
-                            text=f"Вы выбрали оплату в процентах от стоимости заказа,\nк оплате <b>{to_pay} руб.</b>\n"
-                                 f"Номер карты - <b>{requisites.card_number}</b>",
+                            text=text[0],
                             parse_mode=ParseMode.HTML,
                             keyboard=kb.create_paid_comm_keyboard(),
                         )
-                        await state.update_data(finish_price=str(round(price - (p / 100) * price, 2)))
+                        await state.update_data(finish_price=str(price))
                         return
 
-                    application.price = str(price)
+                    application.price = str(price - application.com_value)
                     application.in_working = False
                     user.in_working = False
 
@@ -880,8 +1004,10 @@ def load_handlers(dp, bot: Bot):
                     other_users = result.scalars().all()
 
                     result = await session.execute(
-                        select(Application).filter(
-                            Application.working_user_id == callback_query.message.chat.id)
+                        select(Application).filter(and_(
+                            Application.working_user_id == callback_query.message.chat.id,
+                            Application.in_working == True,
+                        ))
                     )
                     application = result.scalars().first()
 
@@ -966,8 +1092,10 @@ def load_handlers(dp, bot: Bot):
                     other_users = result.scalars().all()
 
                     result = await session.execute(
-                        select(Application).filter(
-                            Application.working_user_id == message.from_user.id)
+                        select(Application).filter(and_(
+                            Application.working_user_id == message.chat.id,
+                            Application.in_working == True,
+                        ))
                     )
                     application = result.scalars().first()
 
@@ -979,7 +1107,7 @@ def load_handlers(dp, bot: Bot):
                     for u in admin_users:
                         try:
                             text = (f"Пользователь отменил заявку, требуется вернуть комиссию в размере "
-                                    f"<b>{application.com_value} руб.</b> на карту <b>{number}</b>")
+                                    f"<b>{int(application.com_value) / 2} руб.</b> на карту <b>{number}</b>")
                             await bot.send_message(
                                 chat_id=u.telegram_chat_id,
                                 text=text,
@@ -1044,6 +1172,7 @@ def load_handlers(dp, bot: Bot):
 
     @router.callback_query(F.data == callbacks.PAID_COMM_CALLBACK)
     async def paid_commission(callback_query: types.CallbackQuery, state: FSMContext):
+        from applications import show_confirmation_for_admins
         try:
             async with AsyncSessionLocal() as session:
                 async with session.begin():
@@ -1054,8 +1183,77 @@ def load_handlers(dp, bot: Bot):
                     user = result.scalars().first()
 
                     result = await session.execute(
-                        select(Application).filter(
-                            Application.working_user_id == callback_query.from_user.id)
+                        select(Application).filter(and_(
+                            Application.working_user_id == callback_query.message.chat.id,
+                            Application.in_working == True,
+                        ))
+                    )
+                    application = result.scalars().first()
+
+                    data = await state.get_data()
+                    price = data.get("finish_price")
+                    ids = data.get("ids", [])
+
+                    if len(ids) >= 2:
+                        try:
+                            await bot.delete_message(
+                                chat_id=callback_query.message.chat.id,
+                                message_id=ids[1]
+                            )
+                        except:
+                            ...
+
+                    p = int(application.com_value)
+                    to_pay = round((p / 100) * int(price), 2)
+                    confirmation = Confirmation(
+                        telegram_user_id=user.telegram_user_id,
+                        telegram_message_id=callback_query.message.message_id,
+                        amount=int(to_pay),
+                        created=round(time.time() * 1000),
+                        type="close",
+                    )
+                    session.add(confirmation)
+                    await session.flush()
+
+                    text = ("<b>НЕ УДАЛЯЙТЕ ЭТО СООБЩЕНИЕ</b>\nВы сможете закрыть заявку как только администратор "
+                            "подтвердит перевод")
+
+                    await bot.edit_message_text(
+                        chat_id=callback_query.message.chat.id,
+                        message_id=callback_query.message.message_id,
+                        text=text,
+                        parse_mode=ParseMode.HTML,
+                    )
+
+                    await show_confirmation_for_admins(
+                        session=session,
+                        confirmation=confirmation,
+                        author_user=user,
+                        bot=bot
+                    )
+
+                await session.commit()
+        except Exception as e:
+            print(e)
+
+    dp.include_router(router)
+
+    @router.callback_query(F.data == callbacks.CLOSE_APPLICATION_CALLBACK)
+    async def close_application_callback(callback_query: types.CallbackQuery, state: FSMContext):
+        try:
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(User).filter(
+                            User.telegram_user_id == callback_query.from_user.id)
+                    )
+                    user = result.scalars().first()
+
+                    result = await session.execute(
+                        select(Application).filter(and_(
+                            Application.working_user_id == callback_query.message.chat.id,
+                            Application.in_working == True,
+                        ))
                     )
                     application = result.scalars().first()
 
@@ -1100,7 +1298,6 @@ def load_handlers(dp, bot: Bot):
                 user_id=callback_query.from_user.id,
                 bot=bot
             )
+
         except Exception as e:
             print(e)
-
-    dp.include_router(router)

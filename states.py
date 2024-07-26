@@ -23,6 +23,7 @@ class States(StatesGroup):
     previous_state = State()
     feedback = State()
     visible_feedbacks = State()
+    visible_confirmations = State()
 
     ids = State()
     admin_ids = State()
@@ -33,5 +34,6 @@ class States(StatesGroup):
     report_ids = State()
     location_ids = State()
     feedback_admin_ids = State()
+    confirmation_admin_ids = State()
 
     feedback_ids = State()
