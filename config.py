@@ -6,7 +6,7 @@ load_dotenv()
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 DATABASE_URL = os.environ.get('DATABASE_URL')
-ROOT_USER_ID = int(os.environ.get('ROOT_USER_ID'))
+ROOT_USER_IDS = eval(os.environ.get('ROOT_USER_ID'))
 AVITO_CLIENT_ID = os.environ.get('AVITO_CLIENT_ID')
 AVITO_CLIENT_SECRET = os.environ.get('AVITO_CLIENT_SECRET')
 

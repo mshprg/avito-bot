@@ -153,6 +153,9 @@ async def handle_webhook_message(request):
     else:
         content = "Unsupported type of file"
 
+    if chat_id is None or chat_id == '0':
+        return
+
     messages = get_messages(user_id, chat_id)['messages']
 
     d = {'is_f': True}
@@ -167,15 +170,15 @@ async def handle_webhook_message(request):
                 d['is_f'] = False
 
     if d['is_f']:
-        if len(messages) <= 2000:
+        if len(messages) <= 2:
             await add_new_application(
-                    user_id=user_id,
-                    chat_id=chat_id,
-                    m_id=m_id,
-                    m_type=m_type,
-                    content=content,
-                    author_id=author_id,
-                    created=created
+                user_id=user_id,
+                chat_id=chat_id,
+                m_id=m_id,
+                m_type=m_type,
+                content=content,
+                author_id=author_id,
+                created=created
             )
     else:
         await send_user_message(

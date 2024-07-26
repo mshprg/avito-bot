@@ -83,7 +83,6 @@ def load_handlers(dp, bot: Bot):
     @router.message(F.text, Command('start'))
     async def registration_user(message: types.Message, state: FSMContext):
         try:
-            await state.update_data(ids=[])
             user_id: int = message.from_user.id
             async with AsyncSessionLocal() as session:
                 async with session.begin():
@@ -93,11 +92,14 @@ def load_handlers(dp, bot: Bot):
                     user = result.scalars().first()
 
                     if user is not None:
+                        await message.answer(
+                            text="|^_^|",
+                            reply_markup=kb.create_feedback_keyboard()
+                        )
                         await send_state_message(
                             state=state,
                             message=message,
                             text="Вы уже зарегистрированы",
-                            keyboard=kb.create_feedback_keyboard(),
                         )
                         return
 
@@ -215,7 +217,7 @@ def load_handlers(dp, bot: Bot):
                     cities = [city.city for city in cities_db]
 
                     if city not in cities:
-                        if config.ROOT_USER_ID != message.from_user.id:
+                        if message.from_user.id not in config.ROOT_USER_IDS:
                             await send_state_message(
                                 state=state,
                                 message=message,
@@ -266,7 +268,7 @@ def load_handlers(dp, bot: Bot):
                 user_data = await state.get_data()
 
                 admin = False
-                if callback_query.from_user.id == config.ROOT_USER_ID:
+                if callback_query.from_user.id in config.ROOT_USER_IDS:
                     admin = True
 
                 user = User(
@@ -289,11 +291,9 @@ def load_handlers(dp, bot: Bot):
 
         await state.clear()
 
-        await send_state_message(
-            state=state,
-            message=callback_query.message,
-            text="Список заявок",
-            keyboard=kb.create_feedback_keyboard()
+        await callback_query.message.answer(
+            text="|^_^|",
+            reply_markup=kb.create_feedback_keyboard()
         )
 
         await show_applications(

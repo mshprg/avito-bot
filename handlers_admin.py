@@ -149,7 +149,7 @@ def load_handlers_admin(dp, bot: Bot):
         if user is None:
             return
 
-        if not user.admin and config.ROOT_USER_ID != user.telegram_user_id:
+        if not user.admin and user.telegram_user_id not in config.ROOT_USER_IDS:
             await send_state_message(
                 state=state,
                 bot=bot,
@@ -168,7 +168,7 @@ def load_handlers_admin(dp, bot: Bot):
                 message_id=message.message_id,
                 state_name="admin_ids"
             )
-            if message.from_user.id == config.ROOT_USER_ID:
+            if message.from_user.id in config.ROOT_USER_IDS:
                 async with AsyncSessionLocal() as session:
                     async with session.begin():
                         result = await session.execute(
@@ -626,7 +626,7 @@ def load_handlers_admin(dp, bot: Bot):
             message_id=message.message_id,
             state_name=state_name
         )
-        if message.from_user.id == config.ROOT_USER_ID:
+        if message.from_user.id in config.ROOT_USER_IDS:
             async with AsyncSessionLocal() as session:
                 async with session.begin():
                     b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
