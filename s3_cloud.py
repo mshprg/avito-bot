@@ -13,7 +13,7 @@ def save_file_on_cloud(file):
     try:
         file_bytes = bytes(file.getbuffer())
         file_name = str(uuid.uuid4()) + ".jpg"
-        s3.put_object(Bucket="avito-store", Key=file_name, Body=file_bytes)
+        s3.put_object(Bucket="avito-storage", Key=file_name, Body=file_bytes)
 
         return file_name
     finally:

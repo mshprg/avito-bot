@@ -6,6 +6,7 @@ from aiogram import Router, types, F, Bot
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
+from aiogram.types import InputMediaPhoto
 from sqlalchemy import select, and_
 import callbacks
 import kb
@@ -33,7 +34,7 @@ media_groups = {}
 def load_handlers(dp, bot: Bot):
     router = Router()
 
-    @router.message(Command('myquestions'), StateFilter(States.message))
+    @router.message(Command('myquestions'), StateFilter(None, States.message))
     async def get_my_questions(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -844,47 +845,23 @@ def load_handlers(dp, bot: Bot):
                     state=state,
                     message=message,
                     text="<b>Ошибка</b>\nОтправьте нам заполненную расписку о получении денег, <b>принимаются только "
-                         "изображения</b>"
+                         "изображения</b>",
+                    parse_mode=ParseMode.HTML,
                 )
                 await state.set_state(States.finish_files)
                 return
 
             if message.media_group_id not in media_groups:
-                media_groups[message.media_group_id] = 0
-
-            if message.media_group_id is not None:
-                photo = message.photo.pop()
-                file_info = await bot.get_file(photo.file_id)
-                file_bytes = await bot.download_file(file_info.file_path)
-                image_bytes = file_bytes.read()
-                file_name = s3_cloud.save_file_on_cloud(io.BytesIO(image_bytes))
-                async with AsyncSessionLocal() as session:
-                    async with session.begin():
-                        result = await session.execute(
-                            select(Application).filter(and_(
-                                Application.working_user_id == message.from_user.id,
-                                Application.in_working == True,
-                            ))
-                        )
-                        application = result.scalars().first()
-
-                        image = Image(
-                            application_id=application.id,
-                            file_name=file_name,
-                        )
-
-                        session.add(image)
-
-                    await session.commit()
+                media_groups[message.media_group_id] = []
 
             await add_state_id(
                 state=state,
                 message_id=message.message_id
             )
 
-            media_groups[message.media_group_id] += 1
+            media_groups[message.media_group_id].append(message.photo.pop())
 
-            if media_groups[message.media_group_id] == 1:
+            if len(media_groups[message.media_group_id]) == 1:
                 await send_state_message(
                     state=state,
                     message=message,
@@ -896,12 +873,56 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
+    async def load_photos(user_id, state: FSMContext):
+        data = await state.get_data()
+        group_id = data.get("finish_files")
+
+        media = media_groups[group_id]
+
+        for photo in media:
+            file_info = await bot.get_file(photo.file_id)
+            file_bytes = await bot.download_file(file_info.file_path)
+            image_bytes = file_bytes.read()
+            file_name = s3_cloud.save_file_on_cloud(io.BytesIO(image_bytes))
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Application).filter(and_(
+                            Application.working_user_id == user_id,
+                            Application.in_working == False,
+                        ))
+                    )
+                    application = result.scalars().first()
+                    image = Image(
+                        application_id=application.id,
+                        file_name=file_name,
+                    )
+                    session.add(image)
+
+                await session.commit()
+
+        async with AsyncSessionLocal() as session:
+            async with session.begin():
+                result = await session.execute(
+                    select(User).filter(User.admin == True)
+                )
+                users = result.scalars().all()
+
+                media_to_send = []
+
+                for m in media:
+                    media_to_send.append(
+                        InputMediaPhoto(media=m.file_id, caption=""))
+
+                if media_to_send:
+                    for u in users:
+                        await bot.send_media_group(chat_id=u.telegram_chat_id, media=media_to_send)
+
+        media_groups.pop(group_id, None)
+
     @router.message(States.finish_price)
     async def read_finish_price(message: types.Message, state: FSMContext):
         try:
-            data = await state.get_data()
-            group_id = data.get("finish_files")
-            media_groups.pop(group_id, None)
             await add_state_id(
                 state=state,
                 message_id=message.message_id
@@ -956,6 +977,8 @@ def load_handlers(dp, bot: Bot):
                     )
 
                 await session.commit()
+
+            await load_photos(message.from_user.id, state)
 
             await send_state_message(
                 state=state,
@@ -1265,6 +1288,8 @@ def load_handlers(dp, bot: Bot):
                     user.in_working = False
 
                 await session.commit()
+
+            await load_photos(callback_query.from_user.id, state)
 
             await send_state_message(
                 state=state,

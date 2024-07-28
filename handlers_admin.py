@@ -63,7 +63,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('reload'), StateFilter(States.message))
+    @router.message(Command('reload'), StateFilter(None, States.message))
     async def reload(message: types.Message, state: FSMContext):
         from message_processing import delete_message_ids
         from applications import show_applications, show_messages_for_application
@@ -169,7 +169,7 @@ def load_handlers_admin(dp, bot: Bot):
 
         return True
 
-    @router.message(Command('admins'), StateFilter(States.message))
+    @router.message(Command('admins'), StateFilter(None, States.message))
     async def show_admins(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -217,7 +217,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('commission'), StateFilter(States.message))
+    @router.message(Command('commission'), StateFilter(None, States.message))
     async def check_commission(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -373,7 +373,7 @@ def load_handlers_admin(dp, bot: Bot):
             )
             await state.set_state(States.percent_commission)
 
-    @router.message(Command('requisites'), StateFilter(States.message))
+    @router.message(Command('requisites'), StateFilter(None, States.message))
     async def check_requisites(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -472,7 +472,7 @@ def load_handlers_admin(dp, bot: Bot):
             )
             await state.set_state(States.requisites)
 
-    @router.message(Command('cities'), StateFilter(States.message))
+    @router.message(Command('cities'), StateFilter(None, States.message))
     async def check_cities(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -659,7 +659,7 @@ def load_handlers_admin(dp, bot: Bot):
 
         return False
 
-    @router.message(Command('mkadmin'), StateFilter(States.message))
+    @router.message(Command('mkadmin'), StateFilter(None, States.message))
     async def make_admin(message: types.Message, state: FSMContext):
         try:
             b = await change_admin_command_handler(
@@ -674,7 +674,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('rmadmin'), StateFilter(States.message))
+    @router.message(Command('rmadmin'), StateFilter(None, States.message))
     async def delete_admin(message: types.Message, state: FSMContext):
         try:
             b = await change_admin_command_handler(
@@ -749,7 +749,7 @@ def load_handlers_admin(dp, bot: Bot):
             )
             await state.set_state(States.admin_change)
 
-    @router.message(Command('report'), StateFilter(States.message))
+    @router.message(Command('report'), StateFilter(None, States.message))
     async def generate_report(message: types.Message, state: FSMContext):
         try:
             async with AsyncSessionLocal() as session:
@@ -1003,7 +1003,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('items'), StateFilter(States.message))
+    @router.message(Command('items'), StateFilter(None, States.message))
     async def get_none_items(message: types.Message, state: FSMContext):
         try:
             from applications import show_new_item_for_admin
@@ -1039,7 +1039,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('questions'), StateFilter(States.message))
+    @router.message(Command('questions'), StateFilter(None, States.message))
     async def get_feedback(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -1199,7 +1199,7 @@ def load_handlers_admin(dp, bot: Bot):
             await state.set_state(States.visible_feedbacks)
             print(e)
 
-    @router.message(Command('improvements'), StateFilter(States.message))
+    @router.message(Command('improvements'), StateFilter(None, States.message))
     async def get_improvements(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -1263,7 +1263,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command("confirmations"), StateFilter(States.message))
+    @router.message(Command("confirmations"), StateFilter(None, States.message))
     async def get_confirmations(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
