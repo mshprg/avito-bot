@@ -157,7 +157,6 @@ async def handle_webhook_message(request):
         return
 
     messages = get_messages(user_id, chat_id)['messages']
-    messages = messages[:10]
 
     d = {'is_f': True}
     async with AsyncSessionLocal() as session:

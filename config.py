@@ -9,6 +9,7 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 ROOT_USER_IDS = eval(os.environ.get('ROOT_USER_ID'))
 AVITO_CLIENT_ID = os.environ.get('AVITO_CLIENT_ID')
 AVITO_CLIENT_SECRET = os.environ.get('AVITO_CLIENT_SECRET')
+BUCKET_NAME = os.environ.get('BUCKET_NAME')
 
 # Webhook settings
 WEBHOOK_HOST = os.environ.get('WEBHOOK_HOST')  # ngrok URL или ваш сервер

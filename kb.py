@@ -59,7 +59,7 @@ def create_application_keyboard():
 
 
 def create_application_admin_keyboard():
-    return generate_inline_markup([['Взять заявку бесплатно', callbacks.SET_APPLICATION_CALLBACK]])
+    return generate_inline_markup([['Взять заявку бесплатно', callbacks.OPEN_APPLICATION_CALLBACK]])
 
 
 def create_price_keyboard(percent, fixed):

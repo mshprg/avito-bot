@@ -916,7 +916,8 @@ def load_handlers(dp, bot: Bot):
 
                 if media_to_send:
                     for u in users:
-                        await bot.send_media_group(chat_id=u.telegram_chat_id, media=media_to_send)
+                        if u.telegram_user_id != user_id:
+                            await bot.send_media_group(chat_id=u.telegram_chat_id, media=media_to_send)
 
         media_groups.pop(group_id, None)
 

@@ -3,6 +3,8 @@ import uuid
 import boto3
 from aiohttp import ClientError
 
+from config import BUCKET_NAME
+
 
 def save_file_on_cloud(file):
     session = boto3.session.Session()
@@ -13,7 +15,7 @@ def save_file_on_cloud(file):
     try:
         file_bytes = bytes(file.getbuffer())
         file_name = str(uuid.uuid4()) + ".jpg"
-        s3.put_object(Bucket="avito-storage", Key=file_name, Body=file_bytes)
+        s3.put_object(Bucket=BUCKET_NAME, Key=file_name, Body=file_bytes)
 
         return file_name
     finally:
@@ -28,7 +30,7 @@ def load_from_cloud(file_name):
     )
     try:
         file_obj = io.BytesIO()
-        s3.download_fileobj("avito-storage", file_name, file_obj)
+        s3.download_fileobj(BUCKET_NAME, file_name, file_obj)
         file_obj.seek(0)
         return file_obj.read()
     except ClientError as e:
