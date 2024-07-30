@@ -826,7 +826,7 @@ def load_handlers(dp, bot: Bot):
     async def exactly_finish_application(callback_query: types.CallbackQuery, state: FSMContext):
         global media_groups
         try:
-
+            media_groups.pop(callback_query.from_user.id, None)
             await send_state_message(
                 state=state,
                 message=callback_query.message,
@@ -840,6 +840,10 @@ def load_handlers(dp, bot: Bot):
     @router.message(States.finish_files)
     async def read_finish_file(message: types.Message, state: FSMContext):
         try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id
+            )
             if message.photo is None:
                 await send_state_message(
                     state=state,
@@ -851,33 +855,33 @@ def load_handlers(dp, bot: Bot):
                 await state.set_state(States.finish_files)
                 return
 
-            if message.media_group_id not in media_groups:
-                media_groups[message.media_group_id] = []
+            if message.from_user.id not in media_groups:
+                media_groups[message.from_user.id] = []
 
-            await add_state_id(
-                state=state,
-                message_id=message.message_id
-            )
+            media_groups[message.from_user.id].append(message.photo.pop())
 
-            media_groups[message.media_group_id].append(message.photo.pop())
-
-            if len(media_groups[message.media_group_id]) == 1:
+            if len(media_groups[message.from_user.id]) == 1:
                 await send_state_message(
                     state=state,
                     message=message,
                     text="Теперь отправьте нам сумму, которую вы получили за работу (отправьте только число)"
                 )
-                await state.update_data(finish_files=message.media_group_id)
 
             await state.set_state(States.finish_price)
         except Exception as e:
+            await send_state_message(
+                state=state,
+                message=message,
+                text="<b>Ошибка</b>\nОтправьте нам заполненную расписку о получении денег, <b>принимаются только "
+                     "изображения</b>",
+                parse_mode=ParseMode.HTML,
+            )
+            await state.set_state(States.finish_files)
+            media_groups.pop(message.from_user.id, None)
             print(e)
 
-    async def load_photos(user_id, state: FSMContext):
-        data = await state.get_data()
-        group_id = data.get("finish_files")
-
-        media = media_groups[group_id]
+    async def load_photos(user_id):
+        media = media_groups[user_id]
 
         for photo in media:
             file_info = await bot.get_file(photo.file_id)
@@ -919,7 +923,7 @@ def load_handlers(dp, bot: Bot):
                         if u.telegram_user_id != user_id:
                             await bot.send_media_group(chat_id=u.telegram_chat_id, media=media_to_send)
 
-        media_groups.pop(group_id, None)
+        media_groups.pop(user_id, None)
 
     @router.message(States.finish_price)
     async def read_finish_price(message: types.Message, state: FSMContext):
@@ -979,7 +983,7 @@ def load_handlers(dp, bot: Bot):
 
                 await session.commit()
 
-            await load_photos(message.from_user.id, state)
+            await load_photos(message.from_user.id)
 
             await send_state_message(
                 state=state,
@@ -1290,7 +1294,7 @@ def load_handlers(dp, bot: Bot):
 
                 await session.commit()
 
-            await load_photos(callback_query.from_user.id, state)
+            await load_photos(callback_query.from_user.id)
 
             await send_state_message(
                 state=state,
