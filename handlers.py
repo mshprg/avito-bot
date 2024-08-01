@@ -15,6 +15,7 @@ from applications import show_applications, show_messages_for_application, send_
     show_application
 import config
 from db import AsyncSessionLocal
+from filters import UserFilter
 from models.addiction import Addiction
 from models.application import Application
 from models.city import City
@@ -34,7 +35,56 @@ media_groups = {}
 def load_handlers(dp, bot: Bot):
     router = Router()
 
-    @router.message(Command('myquestions'), StateFilter(None, States.message))
+    @router.message(Command('myimprovements'), StateFilter(None, States.message), UserFilter())
+    async def get_my_improvements(message: types.Message, state: FSMContext):
+        try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id,
+                state_name="feedback_ids",
+            )
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Feedback).filter(and_(
+                            Feedback.telegram_user_id == message.from_user.id,
+                            Feedback.type == "improvement"
+                        ))
+                    )
+                    feedbacks = result.scalars().all()
+
+                    if len(feedbacks) == 0:
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text="Вы не пердлагали улучшений",
+                            keyboard=kb.create_clear_feedback_keyboard(),
+                            state_name="feedback_ids",
+                        )
+                        return
+
+                    for feedback in feedbacks:
+                        answer = "Пока нет ответа" if len(feedback.answer) == 0 else feedback.answer
+                        text = f"<b>Ваше предложение</b>:\n{feedback.text}\n\n<b>Комментарий администратора:</b>\n{answer}"
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text=text,
+                            parse_mode=ParseMode.HTML,
+                            state_name="feedback_ids",
+                        )
+
+                    await send_state_message(
+                        state=state,
+                        message=message,
+                        text="Действия",
+                        keyboard=kb.create_clear_feedback_keyboard(),
+                        state_name="feedback_ids",
+                    )
+        except Exception as e:
+            print(e)
+
+    @router.message(Command('myquestions'), StateFilter(None, States.message), UserFilter())
     async def get_my_questions(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -305,7 +355,7 @@ def load_handlers(dp, bot: Bot):
             bot=bot
         )
 
-    @router.message(F.text == "Обратная связь")
+    @router.message(F.text == "Обратная связь", UserFilter())
     async def send_feedback_callback(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -338,7 +388,7 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.SEND_QUESTION_CALLBACK)
+    @router.callback_query(F.data == callbacks.SEND_QUESTION_CALLBACK, UserFilter())
     async def send_question_callback(callback_query: types.CallbackQuery, state: FSMContext):
         await send_feedback_message(
             text="Отправьте вопрос",
@@ -347,7 +397,7 @@ def load_handlers(dp, bot: Bot):
             state=state
         )
 
-    @router.callback_query(F.data == callbacks.SEND_IMPROVEMENT_CALLBACK)
+    @router.callback_query(F.data == callbacks.SEND_IMPROVEMENT_CALLBACK, UserFilter())
     async def send_improvement_callback(callback_query: types.CallbackQuery, state: FSMContext):
         await send_feedback_message(
             text="Предложите улучшение",
@@ -395,7 +445,7 @@ def load_handlers(dp, bot: Bot):
             await state.set_state(States.feedback)
             print(e)
 
-    @router.callback_query(F.data == callbacks.TAKE_APPLICATION_CALLBACK)
+    @router.callback_query(F.data == callbacks.TAKE_APPLICATION_CALLBACK, UserFilter())
     async def select_application(callback_query: types.CallbackQuery):
         try:
             async with AsyncSessionLocal() as session:
@@ -446,7 +496,7 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.SELECT_FIXED_CALLBACK)
+    @router.callback_query(F.data == callbacks.SELECT_FIXED_CALLBACK, UserFilter())
     async def wait_paid(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             async with AsyncSessionLocal() as session:
@@ -504,7 +554,7 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.PAID_FIXED_CALLBACK)
+    @router.callback_query(F.data == callbacks.PAID_FIXED_CALLBACK, UserFilter())
     async def paid_fixed_callback(callback_query: types.CallbackQuery):
         from applications import show_confirmation_for_admins
         try:
@@ -603,7 +653,7 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.OPEN_APPLICATION_CALLBACK)
+    @router.callback_query(F.data == callbacks.OPEN_APPLICATION_CALLBACK, UserFilter())
     async def set_application(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             u, a = None, None
@@ -723,7 +773,7 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(States.message)
+    @router.message(States.message, UserFilter())
     async def send_message(message: types.Message, state: FSMContext):
         try:
             if message.media_group_id or message.photo or message.video:
@@ -772,7 +822,7 @@ def load_handlers(dp, bot: Bot):
             print(e)
             await state.set_state(States.message)
 
-    @router.callback_query(F.data == callbacks.STOP_APPLICATION_CALLBACK)
+    @router.callback_query(F.data == callbacks.STOP_APPLICATION_CALLBACK, UserFilter())
     async def stop_application(callback_query: types.CallbackQuery):
         try:
             text = "<b>Вы уверены что хотите отказаться от заявки?</b>"
@@ -787,7 +837,7 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.FINISH_APPLICATION_CALLBACK)
+    @router.callback_query(F.data == callbacks.FINISH_APPLICATION_CALLBACK, UserFilter())
     async def finish_application(callback_query: types.CallbackQuery):
         try:
             text = ("<b>Вы уверены что хотите завершить работу по заявке?</b>\nПосле подтверждения вам потребуется "
@@ -805,7 +855,7 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.BACK_TO_APPLICATION_CALLBACK)
+    @router.callback_query(F.data == callbacks.BACK_TO_APPLICATION_CALLBACK, UserFilter())
     async def back_to_application(callback_query: types.CallbackQuery):
         try:
             text = (
@@ -822,7 +872,7 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.EXACTLY_FINISH_CALLBACK)
+    @router.callback_query(F.data == callbacks.EXACTLY_FINISH_CALLBACK, UserFilter())
     async def exactly_finish_application(callback_query: types.CallbackQuery, state: FSMContext):
         global media_groups
         try:
@@ -837,7 +887,7 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(States.finish_files)
+    @router.message(States.finish_files, UserFilter())
     async def read_finish_file(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -925,7 +975,7 @@ def load_handlers(dp, bot: Bot):
 
         media_groups.pop(user_id, None)
 
-    @router.message(States.finish_price)
+    @router.message(States.finish_price, UserFilter())
     async def read_finish_price(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -968,10 +1018,11 @@ def load_handlers(dp, bot: Bot):
                             parse_mode=ParseMode.HTML,
                             keyboard=kb.create_paid_comm_keyboard(),
                         )
-                        await state.update_data(finish_price=str(price))
+                        await state.update_data(finish_price=price)
                         return
 
                     application.price = str(price - application.com_value)
+                    application.income += application.com_value
                     application.in_working = False
                     user.in_working = False
 
@@ -1015,7 +1066,7 @@ def load_handlers(dp, bot: Bot):
             await state.set_state(States.finish_price)
             print(e)
 
-    @router.callback_query(F.data == callbacks.EXACTLY_STOP_CALLBACK)
+    @router.callback_query(F.data == callbacks.EXACTLY_STOP_CALLBACK, UserFilter())
     async def exactly_stop_application(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             async with AsyncSessionLocal() as session:
@@ -1096,7 +1147,7 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(States.user_card_number)
+    @router.message(States.user_card_number, UserFilter())
     async def read_user_card_number(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -1154,6 +1205,7 @@ def load_handlers(dp, bot: Bot):
                     application.in_working = False
                     application.working_user_id = -1
                     application.pay_type = "None"
+                    application.income += int(application.com_value) / 2
                     application.com_value = 0
                     user.in_working = False
 
@@ -1198,7 +1250,7 @@ def load_handlers(dp, bot: Bot):
             await state.set_state(States.user_card_number)
             print(e)
 
-    @router.callback_query(F.data == callbacks.PAID_COMM_CALLBACK)
+    @router.callback_query(F.data == callbacks.PAID_COMM_CALLBACK, UserFilter())
     async def paid_commission(callback_query: types.CallbackQuery, state: FSMContext):
         from applications import show_confirmation_for_admins
         try:
@@ -1266,7 +1318,7 @@ def load_handlers(dp, bot: Bot):
 
     dp.include_router(router)
 
-    @router.callback_query(F.data == callbacks.CLOSE_APPLICATION_CALLBACK)
+    @router.callback_query(F.data == callbacks.CLOSE_APPLICATION_CALLBACK, UserFilter())
     async def close_application_callback(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             async with AsyncSessionLocal() as session:
@@ -1288,8 +1340,12 @@ def load_handlers(dp, bot: Bot):
                     data = await state.get_data()
                     price = data.get("finish_price")
 
+                    p = int(application.com_value)
+                    to_pay = round((p / 100) * price, 2)
+
                     application.in_working = False
-                    application.price = price
+                    application.price = str(price - to_pay)
+                    application.income += to_pay
                     user.in_working = False
 
                 await session.commit()

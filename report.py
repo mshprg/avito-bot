@@ -87,11 +87,12 @@ async def collect_data(session, start_unix, end_unix):
         "Последнее сообщение Заказчика": [],
         "Дата обращения Заказчика": [],
         "Дата последнего сообщения": [],
-        "Сумма отклика за заявку": [],
+        "Заработано исполнителем": [],
+        "Заработано вами": [],
     }
 
-    names, phones, fio, usernames, last_messages, date_income, date_last_message, price = \
-        [], [], [], [], [], [], [], []
+    names, phones, fio, usernames, last_messages, date_income, date_last_message, price, income = \
+        [], [], [], [], [], [], [], [], []
 
     working_ids = [application.working_user_id for application in applications]
 
@@ -115,6 +116,7 @@ async def collect_data(session, start_unix, end_unix):
         date_income.append(to_date(application.created))
         date_last_message.append(to_date(application.last_message_time))
         price.append(application.price)
+        income.append(application.income)
 
     data['Наименование'] = names
     data['Телефон исполнителя'] = phones
@@ -123,7 +125,8 @@ async def collect_data(session, start_unix, end_unix):
     data['Последнее сообщение Заказчика'] = last_messages
     data['Дата обращения Заказчика'] = date_income
     data['Дата последнего сообщения'] = date_last_message
-    data['Сумма отклика за заявку'] = price
+    data['Заработано исполнителем'] = price
+    data['Заработано вами'] = income
 
     df = pd.DataFrame(data)
 

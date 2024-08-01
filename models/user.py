@@ -12,4 +12,5 @@ class User(Base):
     city: str = Column(String, nullable=False)
     in_working: bool = Column(Boolean, nullable=False, default=False)
     admin: bool = Column(Boolean, nullable=False, default=False)
+    banned: bool = Column(Boolean, nullable=False, default=False)
     income_message_ids: str = Column(String, nullable=False, default="[]")

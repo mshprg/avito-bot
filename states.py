@@ -24,6 +24,8 @@ class States(StatesGroup):
     feedback = State()
     visible_feedbacks = State()
     visible_confirmations = State()
+    ban = State()
+    unban = State()
 
     ids = State()
     admin_ids = State()
@@ -35,5 +37,6 @@ class States(StatesGroup):
     location_ids = State()
     feedback_admin_ids = State()
     confirmation_admin_ids = State()
+    ban_ids = State()
 
     feedback_ids = State()

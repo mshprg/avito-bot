@@ -2,7 +2,7 @@ import asyncio
 import uuid
 import aiohttp
 from aiogram.types import InputMediaPhoto, BufferedInputFile
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 import config
 import main
@@ -210,7 +210,10 @@ async def send_user_message(user_id, chat_id, m_type, content, author_id, create
                 telegram_user_id = application_db.working_user_id
 
                 result = await session.execute(
-                    select(User).filter(User.telegram_user_id == telegram_user_id)
+                    select(User).filter(and_(
+                        User.telegram_user_id == telegram_user_id,
+                        User.banned == False,
+                    ))
                 )
                 user = result.scalars().first()
 
@@ -305,9 +308,10 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
                     )
                 else:
                     result = await session.execute(
-                        select(User).filter(
-                            User.in_working == False
-                        )
+                        select(User).filter(and_(
+                            User.in_working == False,
+                            User.banned == False,
+                        ))
                     )
                     users = result.scalars().all()
 

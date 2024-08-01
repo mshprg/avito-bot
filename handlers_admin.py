@@ -12,6 +12,7 @@ import callbacks
 import kb
 import config
 from db import AsyncSessionLocal
+from filters import UserFilter
 from message_processing import delete_state_messages, send_state_message, add_state_id
 from models.addiction import Addiction
 from models.application import Application
@@ -217,7 +218,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('commission'), StateFilter(None, States.message))
+    @router.message(Command('commission'), StateFilter(None, States.message), UserFilter(check_admin=True))
     async def check_commission(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -227,10 +228,6 @@ def load_handlers_admin(dp, bot: Bot):
             )
             async with AsyncSessionLocal() as session:
                 async with session.begin():
-                    b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
-                    if not b:
-                        return
-
                     result = await session.execute(
                         select(Commission)
                     )
@@ -252,7 +249,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.CHANGE_FIXED_CALLBACK)
+    @router.callback_query(F.data == callbacks.CHANGE_FIXED_CALLBACK, UserFilter(check_admin=True))
     async def change_fixed_callback(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             await send_state_message(
@@ -265,7 +262,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.CHANGE_PERCENT_CALLBACK)
+    @router.callback_query(F.data == callbacks.CHANGE_PERCENT_CALLBACK, UserFilter(check_admin=True))
     async def change_percent_callback(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             await send_state_message(
@@ -279,7 +276,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(States.fixed_commission)
+    @router.message(States.fixed_commission, UserFilter(check_admin=True))
     async def change_fixed_commission(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -326,7 +323,7 @@ def load_handlers_admin(dp, bot: Bot):
             )
             await state.set_state(States.fixed_commission)
 
-    @router.message(States.percent_commission)
+    @router.message(States.percent_commission, UserFilter(check_admin=True))
     async def change_percent_commission(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -373,7 +370,7 @@ def load_handlers_admin(dp, bot: Bot):
             )
             await state.set_state(States.percent_commission)
 
-    @router.message(Command('requisites'), StateFilter(None, States.message))
+    @router.message(Command('requisites'), StateFilter(None, States.message), UserFilter(check_admin=True))
     async def check_requisites(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -383,9 +380,6 @@ def load_handlers_admin(dp, bot: Bot):
             )
             async with AsyncSessionLocal() as session:
                 async with session.begin():
-                    b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
-                    if not b:
-                        return
 
                     result = await session.execute(
                         select(Requisites)
@@ -407,7 +401,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.CHANGE_REQUISITES_CALLBACK)
+    @router.callback_query(F.data == callbacks.CHANGE_REQUISITES_CALLBACK, UserFilter(check_admin=True))
     async def change_requisites_callback(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             text = "Введите новый номер карты, пример:\n*0000000000000000*"
@@ -422,7 +416,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(States.requisites)
+    @router.message(States.requisites, UserFilter(check_admin=True))
     async def read_requisites_callback(message: types.Message, state: FSMContext):
         try:
             card_number = int(message.text)
@@ -472,7 +466,7 @@ def load_handlers_admin(dp, bot: Bot):
             )
             await state.set_state(States.requisites)
 
-    @router.message(Command('cities'), StateFilter(None, States.message))
+    @router.message(Command('cities'), StateFilter(None, States.message), UserFilter(check_admin=True))
     async def check_cities(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -510,7 +504,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.ADD_CITIES_CALLBACK)
+    @router.callback_query(F.data == callbacks.ADD_CITIES_CALLBACK, UserFilter(check_admin=True))
     async def read_cities_to_add(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             text = ("<b>Введите название городов через запятую и пробел, пример:</b>\n\nМосква, Казань, Новосибирск, "
@@ -526,7 +520,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.DELETE_CITIES_CALLBACK)
+    @router.callback_query(F.data == callbacks.DELETE_CITIES_CALLBACK, UserFilter(check_admin=True))
     async def read_cities_to_remove(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             text = ("<b>Введите название городов через запятую и пробел, пример:</b>\n\nМосква, Казань, Новосибирск, "
@@ -598,7 +592,7 @@ def load_handlers_admin(dp, bot: Bot):
             state_name="cities_ids"
         )
 
-    @router.message(States.cities_to_add)
+    @router.message(States.cities_to_add, UserFilter(check_admin=True))
     async def read_list_of_cities_to_add(message: types.Message, state: FSMContext):
         try:
             await mange_cities(
@@ -617,7 +611,7 @@ def load_handlers_admin(dp, bot: Bot):
             )
             await state.set_state(States.cities_to_add)
 
-    @router.message(States.cities_to_remove)
+    @router.message(States.cities_to_remove, UserFilter(check_admin=True))
     async def read_list_of_cities_to_remove(message: types.Message, state: FSMContext):
         try:
             await mange_cities(
@@ -643,11 +637,6 @@ def load_handlers_admin(dp, bot: Bot):
             state_name=state_name
         )
         if message.from_user.id in config.ROOT_USER_IDS:
-            async with AsyncSessionLocal() as session:
-                async with session.begin():
-                    b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
-                    if not b:
-                        return
             await send_state_message(
                 state=state,
                 message=message,
@@ -689,7 +678,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(States.admin_change)
+    @router.message(States.admin_change, UserFilter(check_admin=True))
     async def check_admin_phone(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -716,6 +705,16 @@ def load_handlers_admin(dp, bot: Bot):
                             state=state,
                             message=message,
                             text="Такого пользователя не найдено",
+                            state_name="make_admin_ids"
+                        )
+                        return
+
+                    if user.banned:
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text="Ошибка: пользователь заблокирован",
+                            keyboard=kb.create_delete_admin_messages_keyboard(),
                             state_name="make_admin_ids"
                         )
                         return
@@ -749,14 +748,11 @@ def load_handlers_admin(dp, bot: Bot):
             )
             await state.set_state(States.admin_change)
 
-    @router.message(Command('report'), StateFilter(None, States.message))
+    @router.message(Command('report'), StateFilter(None, States.message), UserFilter(check_admin=True))
     async def generate_report(message: types.Message, state: FSMContext):
         try:
             async with AsyncSessionLocal() as session:
                 async with session.begin():
-                    b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
-                    if not b:
-                        return
 
                     result = await session.execute(
                         select(User).filter(User.telegram_user_id == message.from_user.id)
@@ -785,7 +781,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(States.report_date)
+    @router.message(States.report_date, UserFilter(check_admin=True))
     async def read_report_date(message: types.Message, state: FSMContext):
         from report import collect_data
         try:
@@ -819,9 +815,6 @@ def load_handlers_admin(dp, bot: Bot):
             if start_unix is not None and end_unix is not None:
                 async with AsyncSessionLocal() as session:
                     async with session.begin():
-                        b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
-                        if not b:
-                            return
 
                         report = await collect_data(session, start_unix, end_unix)
 
@@ -844,7 +837,7 @@ def load_handlers_admin(dp, bot: Bot):
     @router.callback_query(F.data == callbacks.DELETE_MESSAGES_CALLBACK)
     async def delete_admin_messages(callback_query: types.CallbackQuery, state: FSMContext):
         state_ids = ["admin_ids", "commission_ids", "requisites_ids", "cities_ids", "make_admin_ids", "report_ids",
-                     "location_ids", "feedback_ids", "feedback_admin_ids", "confirmation_admin_ids"]
+                     "location_ids", "feedback_ids", "feedback_admin_ids", "confirmation_admin_ids", "ban_ids"]
         try:
             for state_name in state_ids:
                 data = await state.get_data()
@@ -877,7 +870,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.ADD_CITY_TO_ITEM_CALLBACK)
+    @router.callback_query(F.data == callbacks.ADD_CITY_TO_ITEM_CALLBACK, UserFilter(check_admin=True))
     async def add_location_to_item(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             current_state = await state.get_state()
@@ -898,7 +891,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(States.add_location)
+    @router.message(States.add_location, UserFilter(check_admin=True))
     async def read_locations(message: types.Message, state: FSMContext):
         from applications import show_application
         try:
@@ -1003,15 +996,12 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('items'), StateFilter(None, States.message))
-    async def get_none_items(message: types.Message, state: FSMContext):
+    @router.message(Command('items'), StateFilter(None, States.message), UserFilter(check_admin=True))
+    async def get_none_items(message: types.Message):
         try:
             from applications import show_new_item_for_admin
             async with AsyncSessionLocal() as session:
                 async with session.begin():
-                    b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
-                    if not b:
-                        return
 
                     result = await session.execute(
                         select(Item).filter(
@@ -1039,85 +1029,104 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(Command('questions'), StateFilter(None, States.message))
+    async def manage_questions_improvements(message: types.Message, state: FSMContext, non_feedback_text, action_text, type_feedback):
+        await add_state_id(
+            state=state,
+            message_id=message.message_id,
+            state_name="feedback_admin_ids"
+        )
+        async with AsyncSessionLocal() as session:
+            async with session.begin():
+
+                result = await session.execute(
+                    select(Feedback).filter(and_(
+                        Feedback.type == type_feedback,
+                        Feedback.answer == ""
+                    ))
+                )
+                feedbacks = result.scalars().all()
+
+                if len(feedbacks) == 0:
+                    await send_state_message(
+                        state=state,
+                        message=message,
+                        text=non_feedback_text,
+                        state_name="feedback_admin_ids",
+                        keyboard=kb.create_delete_admin_messages_keyboard()
+                    )
+                    return
+
+                messages = []
+                for feedback in feedbacks:
+                    result = await session.execute(
+                        select(User).filter(
+                            User.telegram_user_id == feedback.telegram_user_id
+                        )
+                    )
+                    user = result.scalars().first()
+
+                    if user:
+                        name = user.name
+                    else:
+                        name = "неизвестный пользователь"
+
+                    text = f"<b>{action_text} {name}</b>\n\n{feedback.text}"
+                    m = await send_state_message(
+                        state=state,
+                        message=message,
+                        text=text,
+                        keyboard=kb.create_answer_feedback_keyboard(),
+                        parse_mode=ParseMode.HTML,
+                        state_name="feedback_admin_ids",
+                    )
+
+                    messages.append({
+                        'message_id': m.message_id,
+                        'feedback': feedback.to_dict()
+                    })
+
+                state_feedback = {
+                    'messages': messages,
+                    'current_feedback': None,
+                }
+
+                await state.update_data(visible_feedbacks=state_feedback)
+
+        await send_state_message(
+            state=state,
+            message=message,
+            text="Действия",
+            keyboard=kb.create_delete_admin_messages_keyboard(),
+            state_name="feedback_admin_ids",
+        )
+
+    @router.message(Command('questions'), StateFilter(None, States.message), UserFilter(check_admin=True))
     async def get_feedback(message: types.Message, state: FSMContext):
         try:
-            await add_state_id(
-                state=state,
-                message_id=message.message_id,
-                state_name="feedback_admin_ids"
-            )
-            async with AsyncSessionLocal() as session:
-                async with session.begin():
-                    b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
-                    if not b:
-                        return
-
-                    result = await session.execute(
-                        select(Feedback).filter(and_(
-                            Feedback.type == "question",
-                            Feedback.answer == ""
-                        ))
-                    )
-                    feedbacks = result.scalars().all()
-
-                    if len(feedbacks) == 0:
-                        await send_state_message(
-                            state=state,
-                            message=message,
-                            text="Нет неотвеченных вопросов",
-                            state_name="feedback_admin_ids",
-                            keyboard=kb.create_delete_admin_messages_keyboard()
-                        )
-                        return
-
-                    messages = []
-                    for feedback in feedbacks:
-                        result = await session.execute(
-                            select(User).filter(
-                                User.telegram_user_id == feedback.telegram_user_id
-                            )
-                        )
-                        user = result.scalars().first()
-
-                        if user:
-                            name = user.name
-                        else:
-                            name = "неизвестный пользователь"
-
-                        text = f"<b>Спрашивает {name}</b>\n\n{feedback.text}"
-                        m = await send_state_message(
-                            state=state,
-                            message=message,
-                            text=text,
-                            keyboard=kb.create_answer_feedback_keyboard(),
-                            parse_mode=ParseMode.HTML,
-                            state_name="feedback_admin_ids",
-                        )
-
-                        messages.append({
-                            'message_id': m.message_id,
-                            'feedback': feedback.to_dict()
-                        })
-
-                    state_feedback = {
-                        'messages': messages,
-                        'current_feedback': None,
-                    }
-
-                    await state.update_data(visible_feedbacks=state_feedback)
-
-            await send_state_message(
-                state=state,
+            await manage_questions_improvements(
                 message=message,
-                text="Действия",
-                keyboard=kb.create_delete_admin_messages_keyboard(),
-                state_name="feedback_admin_ids",
+                state=state,
+                non_feedback_text="Нет неотвеченных вопросов",
+                action_text="Спрашивает",
+                type_feedback="question"
             )
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.ANSWER_QUESTION_CALLBACK)
+    @router.message(Command('improvements'), StateFilter(None, States.message), UserFilter(check_admin=True))
+    async def get_improvements(message: types.Message, state: FSMContext):
+        try:
+            await manage_questions_improvements(
+                message=message,
+                state=state,
+                non_feedback_text="Нет предложений по улучшению",
+                action_text="Предлагает",
+                type_feedback="improvement"
+            )
+        except Exception as e:
+            print(e)
+
+    @router.callback_query(F.data == callbacks.ANSWER_QUESTION_CALLBACK, UserFilter(check_admin=True))
     async def answer_question_callback(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             data = await state.get_data()
@@ -1149,7 +1158,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.message(States.visible_feedbacks)
+    @router.message(States.visible_feedbacks, UserFilter(check_admin=True))
     async def read_answer(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -1199,71 +1208,7 @@ def load_handlers_admin(dp, bot: Bot):
             await state.set_state(States.visible_feedbacks)
             print(e)
 
-    @router.message(Command('improvements'), StateFilter(None, States.message))
-    async def get_improvements(message: types.Message, state: FSMContext):
-        try:
-            await add_state_id(
-                state=state,
-                message_id=message.message_id,
-                state_name="feedback_admin_ids"
-            )
-            async with AsyncSessionLocal() as session:
-                async with session.begin():
-                    b = await check_user_for_admin(session=session, state=state, chat_id=message.chat.id)
-                    if not b:
-                        return
-
-                    result = await session.execute(
-                        select(Feedback).filter(
-                            Feedback.type == "improvement"
-                        )
-                    )
-                    feedbacks = result.scalars().all()
-
-                    if len(feedbacks) == 0:
-                        await send_state_message(
-                            state=state,
-                            message=message,
-                            text="Нет предложений по улучшению",
-                            state_name="feedback_admin_ids",
-                            keyboard=kb.create_delete_admin_messages_keyboard()
-                        )
-                        return
-
-                    for feedback in feedbacks:
-                        result = await session.execute(
-                            select(User).filter(
-                                User.telegram_user_id == feedback.telegram_user_id
-                            )
-                        )
-                        user = result.scalars().first()
-
-                        if user:
-                            name = user.name
-                        else:
-                            name = "неизвестный пользователь"
-
-                        text = f"<b>Предлагает {name}</b>\n\n{feedback.text}"
-                        await send_state_message(
-                            state=state,
-                            message=message,
-                            text=text,
-                            parse_mode=ParseMode.HTML,
-                            state_name="feedback_admin_ids",
-                        )
-
-            await send_state_message(
-                state=state,
-                message=message,
-                text="Действия",
-                keyboard=kb.create_delete_admin_messages_keyboard(),
-                state_name="feedback_admin_ids",
-            )
-
-        except Exception as e:
-            print(e)
-
-    @router.message(Command("confirmations"), StateFilter(None, States.message))
+    @router.message(Command("confirmations"), StateFilter(None, States.message), UserFilter(check_admin=True))
     async def get_confirmations(message: types.Message, state: FSMContext):
         try:
             await add_state_id(
@@ -1330,7 +1275,7 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.APPROVED_CONF_CALLBACK)
+    @router.callback_query(F.data == callbacks.APPROVED_CONF_CALLBACK, UserFilter(check_admin=True))
     async def approved_confirmation_callback(callback_query: types.CallbackQuery, state: FSMContext):
         try:
             async with AsyncSessionLocal() as session:
@@ -1432,6 +1377,189 @@ def load_handlers_admin(dp, bot: Bot):
 
                 await session.commit()
         except Exception as e:
+            print(e)
+
+    async def ban_command_handler(message: types.Message, state: FSMContext, setting_state):
+        await add_state_id(
+            state=state,
+            message_id=message.message_id,
+            state_name="ban_ids"
+        )
+        await send_state_message(
+            state=state,
+            message=message,
+            text="Введите номер телефона пользователя",
+            state_name="ban_ids"
+        )
+        await state.set_state(setting_state)
+
+    @router.message(Command('ban'), UserFilter(check_admin=True))
+    async def ban_user(message: types.Message, state: FSMContext):
+        try:
+            await ban_command_handler(message, state, States.ban)
+        except Exception as e:
+            print(e)
+
+    @router.message(Command('unban'), UserFilter(check_admin=True))
+    async def unban_user(message: types.Message, state: FSMContext):
+        try:
+            await ban_command_handler(message, state, States.unban)
+        except Exception as e:
+            print(e)
+
+    @router.message(States.ban, UserFilter(check_admin=True))
+    async def read_ban_number(message: types.Message, state: FSMContext):
+        from applications import show_application
+        try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id,
+                state_name="ban_ids"
+            )
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    phone = message.text
+                    result = await session.execute(
+                        select(User).filter(User.phone == phone)
+                    )
+                    user = result.scalars().first()
+
+                    if user is None:
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text="Пользователя с таким номером телефона не существует",
+                            state_name="ban_ids"
+                        )
+                        await state.set_state(States.ban)
+                        return
+
+                    if message.from_user.id in config.ROOT_USER_IDS:
+                        if user.telegram_user_id not in config.ROOT_USER_IDS:
+                            if user.admin:
+                                user.admin = False
+                            user.banned = True
+                        else:
+                            await send_state_message(
+                                state=state,
+                                message=message,
+                                text="У вас недостаточно прав для блокировки этого пользователя",
+                                keyboard=kb.create_delete_admin_messages_keyboard(),
+                                state_name="ban_ids",
+                            )
+                    else:
+                        if user.telegram_user_id not in config.ROOT_USER_IDS and not user.admin:
+                            user.banned = True
+                        else:
+                            await send_state_message(
+                                state=state,
+                                message=message,
+                                text="У вас недостаточно прав для блокировки этого пользователя",
+                                keyboard=kb.create_delete_admin_messages_keyboard(),
+                                state_name="ban_ids",
+                            )
+
+                    await session.flush()
+
+                    if user.banned and user.in_working:
+                        result = await session.execute(
+                            select(Application).filter(and_(
+                                Application.working_user_id == user.telegram_user_id,
+                                Application.in_working == True,
+                            ))
+                        )
+                        application = result.scalars().first()
+
+                        if application:
+                            application.in_working = False
+                            application.working_user_id = -1
+                            application.pay_type = "None"
+                            application.com_value = 0
+                            user.in_working = False
+
+                            result = await session.execute(
+                                select(User).filter(and_(
+                                    User.in_working == False,
+                                    User.banned == False,
+                                ))
+                            )
+                            users = result.scalars().all()
+
+                            for u in users:
+                                await show_application(
+                                    session=session,
+                                    is_admin=u.admin,
+                                    application=application,
+                                    user_city=u.city,
+                                    bot=bot,
+                                    chat_id=u.telegram_chat_id
+                                )
+
+                    if user.banned:
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text="Пользователь заблокирован",
+                            keyboard=kb.create_delete_admin_messages_keyboard(),
+                            state_name="ban_ids",
+                        )
+
+                await session.commit()
+        except Exception as e:
+            await send_state_message(
+                state=state,
+                message=message,
+                text="Ошибка, повторите попытку",
+                state_name="ban_ids"
+            )
+            await state.set_state(States.ban)
+            print(e)
+
+    @router.message(States.unban, UserFilter(check_admin=True))
+    async def read_unban_number(message: types.Message, state: FSMContext):
+        try:
+            await add_state_id(
+                state=state,
+                message_id=message.message_id,
+                state_name="ban_ids"
+            )
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    phone = message.text
+                    result = await session.execute(
+                        select(User).filter(User.phone == phone)
+                    )
+                    user = result.scalars().first()
+
+                    if user is None:
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text="Пользователя с таким номером телефона не существует",
+                            state_name="ban_ids"
+                        )
+                        await state.set_state(States.unban)
+                        return
+
+                    user.banned = False
+
+                    await send_state_message(
+                        state=state,
+                        message=message,
+                        text="Пользователь разблокирован",
+                        keyboard=kb.create_delete_admin_messages_keyboard(),
+                        state_name="ban_ids",
+                    )
+
+                await session.commit()
+        except Exception as e:
+            await send_state_message(
+                state=state,
+                message=message,
+                text="Ошибка, повторите попытку",
+                state_name="ban_ids"
+            )
+            await state.set_state(States.ban)
             print(e)
 
     dp.include_router(router)

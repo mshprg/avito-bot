@@ -93,9 +93,15 @@ async def show_applications(bot, user_id, chat_id):
     async with AsyncSessionLocal() as session:
         async with session.begin():
             result = await session.execute(
-                select(User).filter(User.telegram_user_id == user_id)
+                select(User).filter(and_(
+                    User.telegram_user_id == user_id,
+                    User.banned == False,
+                ))
             )
             user = result.scalars().first()
+
+            if user is None:
+                return
 
             result = await session.execute(
                 select(Mask).filter(Mask.telegram_user_id == user_id)
@@ -141,6 +147,8 @@ async def show_messages_for_application(state, bot: Bot, avito_chat_id, avito_us
     )['messages']
 
     messages.reverse()
+
+    messages = messages[:10]
 
     current_dir = os.getcwd()
 
