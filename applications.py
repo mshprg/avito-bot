@@ -148,8 +148,6 @@ async def show_messages_for_application(state, bot: Bot, avito_chat_id, avito_us
 
     messages.reverse()
 
-    messages = messages[:10]
-
     current_dir = os.getcwd()
 
     path_1 = os.path.join(current_dir, "files/dogovor.docx")
