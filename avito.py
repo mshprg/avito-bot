@@ -170,7 +170,7 @@ async def handle_webhook_message(request):
                 d['is_f'] = False
 
     if d['is_f']:
-        if len(messages) <= 2000:
+        if len(messages) <= 2:
             await add_new_application(
                 user_id=user_id,
                 chat_id=chat_id,

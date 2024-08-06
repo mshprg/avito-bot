@@ -962,11 +962,18 @@ def load_handlers(dp, bot: Bot):
                 )
                 users = result.scalars().all()
 
+                result = await session.execute(
+                    select(User).filter(User.telegram_user_id == user_id)
+                )
+                user = result.scalars().first()
+
                 media_to_send = []
+
+                caption = f"Фото от пользователя {user.name}\nНомер телефона: {user.phone}"
 
                 for m in media:
                     media_to_send.append(
-                        InputMediaPhoto(media=m.file_id, caption=""))
+                        InputMediaPhoto(media=m.file_id, caption=caption))
 
                 if media_to_send:
                     for u in users:

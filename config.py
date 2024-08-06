@@ -15,6 +15,7 @@ BUCKET_NAME = os.environ.get('BUCKET_NAME')
 WEBHOOK_HOST = os.environ.get('WEBHOOK_HOST')  # ngrok URL или ваш сервер
 WEBHOOK_PATH = '/webhook'
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+# https://5b35-185-145-125-177.ngrok-free.app
 # https://d6cc-2a00-1370-818c-206b-a129-5515-efbf-7172.ngrok-free.app
 # https://e911-2a03-6f00-5-1-00-4bce.ngrok-free.app
 # https://f230-2a00-1370-818c-206b-a9e6-f5bd-2f6b-ffce.ngrok-free.app
