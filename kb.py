@@ -160,7 +160,6 @@ def create_close_application_keyboard():
 def create_new_confirmation_actions():
     return generate_inline_markup([
         ['Подтвердить перевод', callbacks.APPROVED_CONF_CALLBACK],
-        ['Удалить сообщение', callbacks.DELETE_CONF_CALLBACK],
     ])
 
 

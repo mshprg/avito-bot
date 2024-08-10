@@ -59,6 +59,10 @@ async def send_state_message(state, message=None, text=None, keyboard=None, chat
         print(e)
 
 
+async def delete_message_from_state():
+    ...
+
+
 async def send_state_media(state, chat_id, bot: Bot, media, state_name: str = "ids") -> list[Message] | None:
     try:
         m = await bot.send_media_group(
