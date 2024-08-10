@@ -39,9 +39,18 @@ def load_handlers_admin(dp, bot: Bot):
     @router.message(Command('cancel'), StateFilter("*"))
     async def cancel(message: types.Message, state: FSMContext):
         try:
-            await reset_state(state)
             async with AsyncSessionLocal() as session:
                 async with session.begin():
+                    result = await session.execute(
+                        select(Confirmation).filter(Confirmation.telegram_user_id == message.from_user.id)
+                    )
+                    confirmation = result.scalars().first()
+
+                    if confirmation is not None:
+                        return
+
+                    await reset_state(state)
+
                     result = await session.execute(
                         select(User).filter(User.telegram_user_id == message.from_user.id)
                     )
@@ -73,13 +82,22 @@ def load_handlers_admin(dp, bot: Bot):
                 state=state,
                 message_id=message.message_id
             )
-            await delete_state_messages(
-                state=state,
-                bot=bot,
-                chat_id=message.chat.id
-            )
             async with AsyncSessionLocal() as session:
                 async with session.begin():
+                    result = await session.execute(
+                        select(Confirmation).filter(Confirmation.telegram_user_id == message.from_user.id)
+                    )
+                    confirmation = result.scalars().first()
+
+                    if confirmation is not None:
+                        return
+
+                    await delete_state_messages(
+                        state=state,
+                        bot=bot,
+                        chat_id=message.chat.id
+                    )
+
                     await delete_message_ids(
                         session=session,
                         bot=bot,

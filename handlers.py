@@ -681,8 +681,6 @@ def load_handlers(dp, bot: Bot):
                     if user is None:
                         return
 
-                    user.in_working = True
-
                     if user.admin:
                         pay_type = "admin"
 
