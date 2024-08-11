@@ -7,8 +7,11 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from apscheduler.jobstores.base import ConflictingIdError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
-import handlers
-import handlers_admin
+from scenarios import handlers, handlers_admin
+from scenarios.admin import (ban_users, generate_report, manage_admins, manage_cities, manage_commission,
+                             manage_confirmations, manage_items, manage_questions_improvements, manage_requisites)
+from scenarios.user import (create_feedback, finish_application, open_application, registration, stop_application,
+                            user_improvements_questions)
 from db import init_db, AsyncSessionLocal
 import config
 import avito
@@ -42,6 +45,23 @@ async def start_bot():
 
     handlers_admin.load_handlers_admin(dp, bot)
     handlers.load_handlers(dp, bot)
+
+    ban_users.load_handlers(dp, bot)
+    generate_report.load_handlers(dp, bot)
+    manage_admins.load_handlers(dp, bot)
+    manage_cities.load_handlers(dp, bot)
+    manage_commission.load_handlers(dp, bot)
+    manage_confirmations.load_handlers(dp, bot)
+    manage_items.load_handlers(dp, bot)
+    manage_questions_improvements.load_handlers(dp, bot)
+    manage_requisites.load_handlers(dp, bot)
+
+    create_feedback.load_handlers(dp, bot)
+    finish_application.load_handlers(dp, bot)
+    open_application.load_handlers(dp, bot)
+    registration.load_handlers(dp, bot)
+    stop_application.load_handlers(dp, bot)
+    user_improvements_questions.load_handlers(dp, bot)
 
     async with AsyncSessionLocal() as session:
         async with session.begin():

@@ -3,6 +3,7 @@ import datetime
 from time import sleep
 
 from aiogram import Bot
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from sqlalchemy import select
 from models.user import User
@@ -59,8 +60,10 @@ async def send_state_message(state, message=None, text=None, keyboard=None, chat
         print(e)
 
 
-async def delete_message_from_state():
-    ...
+async def reset_state(state: FSMContext):
+    data = await state.get_data()
+    await state.clear()
+    await state.update_data(data)
 
 
 async def send_state_media(state, chat_id, bot: Bot, media, state_name: str = "ids") -> list[Message] | None:
