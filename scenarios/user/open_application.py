@@ -60,7 +60,7 @@ def load_handlers(dp, bot: Bot):
 
                     text = (
                         "*Выберите способ оплаты комиссии:*\n_Фиксированная комиссия_ \- платите сразу\n_Процент от "
-                        "стоимости_ \- платите процент от стоимости заказа")
+                        "стоимости_ \- *\(функция временно недоступна\)* платите процент от стоимости заказа")
 
                     await bot.edit_message_text(
                         text=text,
@@ -245,8 +245,9 @@ def load_handlers(dp, bot: Bot):
                     pay_type = data.get("pay_type")
 
                     if pay_type is None:
-                        await state.update_data(pay_type="percent")
-                        pay_type = "percent"
+                        return
+                        # await state.update_data(pay_type="percent")
+                        # pay_type = "percent"
 
                     result = await session.execute(
                         select(User).filter(

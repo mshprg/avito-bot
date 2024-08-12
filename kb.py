@@ -64,7 +64,7 @@ def create_application_admin_keyboard():
 
 def create_price_keyboard(percent, fixed):
     return generate_inline_markup([
-        [f'{percent}% от выручки', callbacks.OPEN_APPLICATION_CALLBACK],
+        # [f'{percent}% от выручки', callbacks.OPEN_APPLICATION_CALLBACK],
         [f'{fixed} руб.', callbacks.SELECT_FIXED_CALLBACK]
     ])
 

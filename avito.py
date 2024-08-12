@@ -2,7 +2,7 @@ import asyncio
 import uuid
 import aiohttp
 from aiogram.types import InputMediaPhoto, BufferedInputFile
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_
 
 import config
 import main
@@ -170,7 +170,9 @@ async def handle_webhook_message(request):
                 d['is_f'] = False
 
     if d['is_f']:
-        if len(messages) <= 2000:
+        length = len(messages)
+        print("Length messages = ", length, "- - - - - - - -")
+        if length == 1:
             await add_new_application(
                 user_id=user_id,
                 chat_id=chat_id,
@@ -180,6 +182,9 @@ async def handle_webhook_message(request):
                 author_id=author_id,
                 created=created
             )
+        if length == 2:
+            print("chat_id: ", chat_id)
+            print("#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n")
     else:
         await send_user_message(
             user_id=user_id,
@@ -254,11 +259,14 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
     async with AsyncSessionLocal() as session:
         async with session.begin():
             result = await session.execute(
-                select(Application).filter(Application.avito_chat_id == chat_id)
+                select(Application).filter(or_(
+                    Application.avito_chat_id == chat_id,
+                    Application.avito_message_id == m_id,
+                ))
             )
             application_db = result.scalars().first()
 
-            if application_db is None and author_id != user_id:
+            if application_db is None and author_id != user_id and int(chat['context']['value']['id']) != 0:
 
                 result = await session.execute(
                     select(Item).filter(Item.avito_item_id == int(chat['context']['value']['id']))
