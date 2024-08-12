@@ -1,4 +1,4 @@
-import time
+from time import sleep, time
 
 from aiogram import Router, Bot, types, F
 from aiogram.enums import ParseMode
@@ -114,15 +114,16 @@ def load_handlers(dp, bot: Bot):
                     commission = result.scalars().first()
 
                     text = (
-                        f"*Требуется оплатить комиссию:*\n\nНомер карты \- *{requisites.card_number}*\nCумма оплаты: "
-                        f"*{commission.fixed}* руб\nВ сообщении к переводу укажите номер: *{callback_query.from_user.id}*")
+                        f"<b>Требуется оплатить комиссию:</b>\n\nНомер карты - <b>{requisites.card_number}</b>\nCумма оплаты: "
+                        f"<b>{commission.fixed}</b> руб\nВ сообщении к переводу укажите номер: "
+                        f"<b>{callback_query.from_user.id}</b>")
 
                     await bot.edit_message_text(
                         text=text,
                         chat_id=callback_query.message.chat.id,
                         message_id=callback_query.message.message_id,
                         reply_markup=kb.create_paid_fixed_callback(),
-                        parse_mode=ParseMode.MARKDOWN_V2,
+                        parse_mode=ParseMode.HTML,
                     )
 
                     await state.update_data(pay_type="fixed")
@@ -164,7 +165,7 @@ def load_handlers(dp, bot: Bot):
                         telegram_user_id=callback_query.from_user.id,
                         telegram_message_id=callback_query.message.message_id,
                         amount=commission.fixed,
-                        created=round(time.time() * 1000),
+                        created=round(time() * 1000),
                         type="open"
                     )
                     session.add(confirmation)
@@ -200,24 +201,26 @@ def load_handlers(dp, bot: Bot):
 
                     for ad in app_addictions:
                         if ad.telegram_message_id != callback_query.message.message_id:
+                            sleep(0.1)
                             try:
                                 await bot.delete_message(
                                     chat_id=ad.telegram_chat_id,
                                     message_id=ad.telegram_message_id,
                                 )
-                            except:
-                                ...
+                            except Exception as e:
+                                print(e)
                             await session.delete(ad)
 
                     for ad in current_user_addictions:
                         if ad.telegram_message_id != callback_query.message.message_id:
+                            sleep(0.1)
                             try:
                                 await bot.delete_message(
                                     chat_id=ad.telegram_chat_id,
                                     message_id=ad.telegram_message_id,
                                 )
-                            except:
-                                ...
+                            except Exception as e:
+                                print(e)
                             await session.delete(ad)
 
                     await show_confirmation_for_admins(
@@ -280,6 +283,8 @@ def load_handlers(dp, bot: Bot):
                     )
                     application = result.scalars().first()
 
+                    user.in_working = True
+
                     application.waiting_confirmation = False
                     application.in_working = True
                     application.working_user_id = callback_query.from_user.id
@@ -296,13 +301,14 @@ def load_handlers(dp, bot: Bot):
                     addictions = result.scalars().all()
 
                     for ad in addictions:
+                        sleep(0.1)
                         try:
                             await bot.delete_message(
                                 chat_id=ad.telegram_chat_id,
                                 message_id=ad.telegram_message_id,
                             )
-                        except:
-                            ...
+                        except Exception as e:
+                            print(e)
                         await session.delete(ad)
 
                     await session.flush()
@@ -314,13 +320,14 @@ def load_handlers(dp, bot: Bot):
                     current_user_addictions = result.scalars().all()
 
                     for ad in current_user_addictions:
+                        sleep(0.1)
                         try:
                             await bot.delete_message(
                                 chat_id=ad.telegram_chat_id,
                                 message_id=ad.telegram_message_id,
                             )
-                        except:
-                            ...
+                        except Exception as e:
+                            print(e)
                         await session.delete(ad)
 
                     u = {'telegram_chat_id': user.telegram_chat_id}

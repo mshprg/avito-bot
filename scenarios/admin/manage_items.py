@@ -1,3 +1,5 @@
+from time import sleep
+
 from aiogram import Router, Bot, types, F
 from aiogram.filters import StateFilter, Command
 from aiogram.fsm.context import FSMContext
@@ -136,13 +138,14 @@ def load_handlers(dp, bot: Bot):
                     item_addictions = result.scalars().all()
 
                     for ad in item_addictions:
+                        sleep(0.1)
                         try:
                             await bot.delete_message(
                                 chat_id=ad.telegram_chat_id,
                                 message_id=ad.telegram_message_id,
                             )
-                        except:
-                            ...
+                        except Exception as e:
+                            print(e)
                         await session.delete(ad)
 
                     await session.flush()

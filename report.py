@@ -110,12 +110,18 @@ async def collect_data(session, start_unix, end_unix):
         else:
             phones.append(user.phone)
             fio.append(user.name)
+
+        if application.pay_type == "percent":
+            res_price = application.price * (100 - application.com_value) / 100
+        else:
+            res_price = application.price - application.com_value
+
         names.append(application.item_name)
         usernames.append(application.username)
         last_messages.append(application.last_message_text)
         date_income.append(to_date(application.created))
         date_last_message.append(to_date(application.last_message_time))
-        price.append(application.price)
+        price.append(res_price)
         income.append(application.income)
 
     data['Наименование'] = names

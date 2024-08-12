@@ -1,5 +1,5 @@
 from db import Base
-from sqlalchemy import Column, Integer, String, Boolean, BigInteger
+from sqlalchemy import Column, Integer, String, Boolean, BigInteger, Float
 
 
 class Application(Base):
@@ -21,7 +21,7 @@ class Application(Base):
     last_message_text: str = Column(String, nullable=False)
     username: str = Column(String, nullable=False)
     pay_type: str = Column(String, nullable=True)
-    income: int = Column(Integer, nullable=False, default=0)
-    com_value: int = Column(Integer, nullable=False, default=0)
-    price: str = Column(String, nullable=False, default="0")
+    income: float = Column(Float, nullable=False, default=0)
+    com_value: float = Column(Float, nullable=False, default=0)
+    price: float = Column(Float, nullable=False, default=0)
     waiting_confirmation: bool = Column(Boolean, nullable=False, default=False)

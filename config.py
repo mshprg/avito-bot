@@ -16,6 +16,8 @@ WEBHOOK_HOST = os.environ.get('WEBHOOK_HOST')  # ngrok URL или ваш сер�
 WEBHOOK_PATH = '/webhook'
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 # https://ff4f-2a00-1370-818c-206b-2509-507b-e8e3-5318.ngrok-free.app
+# https://b1bf-185-145-125-177.ngrok-free.app
+#
 
 # Web server settings
 WEBAPP_HOST = '0.0.0.0'

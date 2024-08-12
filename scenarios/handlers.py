@@ -1,35 +1,12 @@
-import io
-import re
-import time
-from time import sleep
-from aiogram import Router, types, F, Bot
-from aiogram.enums import ParseMode
-from aiogram.filters import Command, StateFilter
+from aiogram import Router, types, Bot
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InputMediaPhoto
 from sqlalchemy import select, and_
-import callbacks
-import kb
-import s3_cloud
-from applications import show_applications, show_messages_for_application, send_message_for_application, \
-    show_application
-import config
+from applications import send_message_for_application
 from db import AsyncSessionLocal
 from filters import UserFilter
-from models.addiction import Addiction
 from models.application import Application
-from models.city import City
-from models.comission import Commission
-from models.confirmation import Confirmation
-from models.feedback import Feedback
-from models.image import Image
-from models.mask import Mask
-from models.requisites import Requisites
-from models.user import User
 from states import States
-from message_processing import send_state_message, delete_state_messages, add_state_id, delete_message_ids
-
-media_groups = {}
+from message_processing import add_state_id
 
 
 def load_handlers(dp, bot: Bot):
@@ -83,3 +60,5 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
             await state.set_state(States.message)
+
+    dp.include_router(router)

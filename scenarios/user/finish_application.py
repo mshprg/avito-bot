@@ -21,6 +21,8 @@ from models.requisites import Requisites
 from models.user import User
 from states import States
 
+media_groups = {}
+
 
 def load_handlers(dp, bot: Bot):
     router = Router()
@@ -152,13 +154,31 @@ def load_handlers(dp, bot: Bot):
                 users = result.scalars().all()
 
                 result = await session.execute(
+                    select(Application).filter(and_(
+                        Application.working_user_id == user_id,
+                        Application.in_working == False,
+                    ))
+                )
+                application = result.scalars().first()
+
+                result = await session.execute(
                     select(User).filter(User.telegram_user_id == user_id)
                 )
                 user = result.scalars().first()
 
                 media_to_send = []
 
-                caption = f"Фото от пользователя {user.name}\nНомер телефона: {user.phone}"
+                if application.pay_type == "percent":
+                    user_income = round(application.price * (100 - application.com_value) / 100, 2)
+                else:
+                    user_income = application.price - application.com_value
+                comm = application.price - user_income
+
+                caption = (f"Фото от пользователя {user.name}\nНомер телефона: "
+                           f"{user.phone}\nОплата за работу: {application.price} руб.\n"
+                           f"Исполнитель получил с учетом комиссии: {user_income} руб.\n"
+                           f"Комиссия: {comm} руб.\n"
+                           f"Заработано на заявке: {application.income} руб.")
 
                 for m in media:
                     media_to_send.append(
@@ -167,7 +187,11 @@ def load_handlers(dp, bot: Bot):
                 if media_to_send:
                     for u in users:
                         if u.telegram_user_id != user_id:
-                            await bot.send_media_group(chat_id=u.telegram_chat_id, media=media_to_send)
+                            sleep(0.1)
+                            try:
+                                await bot.send_media_group(chat_id=u.telegram_chat_id, media=media_to_send)
+                            except Exception as e:
+                                print(e)
 
         media_groups.pop(user_id, None)
 
@@ -217,7 +241,7 @@ def load_handlers(dp, bot: Bot):
                         await state.update_data(finish_price=price)
                         return
 
-                    application.price = str(price - application.com_value)
+                    application.price = price
                     application.income += application.com_value
                     application.in_working = False
                     user.in_working = False
@@ -292,10 +316,10 @@ def load_handlers(dp, bot: Bot):
                                 chat_id=callback_query.message.chat.id,
                                 message_id=ids[1]
                             )
-                        except:
-                            ...
+                        except Exception as e:
+                            print(e)
 
-                    p = int(application.com_value)
+                    p = application.com_value
                     to_pay = round((p / 100) * int(price), 2)
                     confirmation = Confirmation(
                         telegram_user_id=user.telegram_user_id,
@@ -350,11 +374,11 @@ def load_handlers(dp, bot: Bot):
                     data = await state.get_data()
                     price = data.get("finish_price")
 
-                    p = int(application.com_value)
+                    p = application.com_value
                     to_pay = round((p / 100) * price, 2)
 
                     application.in_working = False
-                    application.price = str(price - to_pay)
+                    application.price = price
                     application.income += to_pay
                     user.in_working = False
 

@@ -19,74 +19,78 @@ from models.user import User
 
 
 async def show_application(session, is_admin, application, user_city, bot: Bot, chat_id):
-    location = application.item_location.split(', ')
-    if user_city not in location:
-        return
-    if is_admin:
-        keyboard = kb.create_application_admin_keyboard()
-    else:
-        keyboard = kb.create_application_keyboard()
-    if application.type == 'text':
-        text = f"<b>Заявка от пользователя {application.username}:</b>\n\n{application.content}"
-        m = await bot.send_message(
-            chat_id=chat_id,
-            text=text,
-            reply_markup=keyboard,
-            parse_mode=ParseMode.HTML,
-        )
-        addiction = Addiction(
-            application_id=application.id,
-            telegram_message_id=m.message_id,
-            telegram_chat_id=m.chat.id
-        )
-        session.add(addiction)
-    elif application.type == 'image':
-        response = requests.get(application.content)
-        if response.status_code != 200:
-            print(f"Не удалось скачать картинку. Код ошибки: {response.status_code}")
+    try:
+        location = application.item_location.split(', ')
+        if user_city not in location:
             return
-        file_bytes = response.content
-        name = str(uuid.uuid4())
-        text = f"<b>Заявка от пользователя {application.username}:</b>"
-        media = InputMediaPhoto(
-            media=BufferedInputFile(file_bytes, filename=f'image_{name}.jpg'),
-        )
-        m = (await bot.send_media_group(
-            chat_id=chat_id,
-            media=[media]
-        ))[0]
-        addiction1 = Addiction(
-            application_id=application.id,
-            telegram_message_id=m.message_id,
-            telegram_chat_id=m.chat.id,
-        )
-        m = await bot.send_message(
-            chat_id=chat_id,
-            text=text,
-            reply_markup=keyboard,
-            parse_mode=ParseMode.HTML,
-        )
-        addiction2 = Addiction(
-            application_id=application.id,
-            telegram_message_id=m.message_id,
-            telegram_chat_id=m.chat.id,
-        )
-        session.add(addiction1)
-        session.add(addiction2)
-    else:
-        text = ("Вам прислал сообщение новый пользователь, к сожалению данный тип сообщения "
-                "невозможно обработать в Telegram, но вы можете взять заявку")
-        m = await bot.send_message(
-            chat_id=chat_id,
-            text=text,
-            reply_markup=keyboard,
-        )
-        addiction = Addiction(
-            application_id=application.id,
-            telegram_message_id=m.message_id,
-            telegram_chat_id=m.chat.id,
-        )
-        session.add(addiction)
+        if is_admin:
+            keyboard = kb.create_application_admin_keyboard()
+        else:
+            keyboard = kb.create_application_keyboard()
+        if application.type == 'text':
+            text = f"<b>Заявка от пользователя {application.username}:</b>\n\n{application.content}"
+            m = await bot.send_message(
+                chat_id=chat_id,
+                text=text,
+                reply_markup=keyboard,
+                parse_mode=ParseMode.HTML,
+            )
+            addiction = Addiction(
+                application_id=application.id,
+                telegram_message_id=m.message_id,
+                telegram_chat_id=m.chat.id
+            )
+            session.add(addiction)
+        elif application.type == 'image':
+            response = requests.get(application.content)
+            if response.status_code != 200:
+                print(f"Не удалось скачать картинку. Код ошибки: {response.status_code}")
+                return
+            file_bytes = response.content
+            name = str(uuid.uuid4())
+            text = f"<b>Заявка от пользователя {application.username}:</b>"
+            media = InputMediaPhoto(
+                media=BufferedInputFile(file_bytes, filename=f'image_{name}.jpg'),
+            )
+            m = (await bot.send_media_group(
+                chat_id=chat_id,
+                media=[media]
+            ))[0]
+            addiction1 = Addiction(
+                application_id=application.id,
+                telegram_message_id=m.message_id,
+                telegram_chat_id=m.chat.id,
+            )
+            m = await bot.send_message(
+                chat_id=chat_id,
+                text=text,
+                reply_markup=keyboard,
+                parse_mode=ParseMode.HTML,
+            )
+            addiction2 = Addiction(
+                application_id=application.id,
+                telegram_message_id=m.message_id,
+                telegram_chat_id=m.chat.id,
+            )
+            session.add(addiction1)
+            session.add(addiction2)
+        else:
+            text = ("Вам прислал сообщение новый пользователь, к сожалению данный тип сообщения "
+                    "невозможно обработать в Telegram, но вы можете взять заявку")
+            m = await bot.send_message(
+                chat_id=chat_id,
+                text=text,
+                reply_markup=keyboard,
+            )
+            addiction = Addiction(
+                application_id=application.id,
+                telegram_message_id=m.message_id,
+                telegram_chat_id=m.chat.id,
+            )
+            session.add(addiction)
+        sleep(0.3)
+    except Exception as e:
+        print(e)
 
 
 async def show_applications(bot, user_id, chat_id):
@@ -139,8 +143,8 @@ async def show_applications(bot, user_id, chat_id):
         await session.commit()
 
 
-async def show_messages_for_application(state, bot: Bot, avito_chat_id, avito_user_id, telegram_chat_id, author_id, username):
-
+async def show_messages_for_application(state, bot: Bot, avito_chat_id, avito_user_id, telegram_chat_id, author_id,
+                                        username):
     messages = avito.get_messages(
         chat_id=avito_chat_id,
         user_id=avito_user_id,
@@ -161,7 +165,8 @@ async def show_messages_for_application(state, bot: Bot, avito_chat_id, avito_us
     doc1 = InputMediaDocument(media=BufferedInputFile(file1_bytes, filename="Образец договора возмездного оказания "
                                                                             "услуг.docx"))
     doc2 = InputMediaDocument(media=BufferedInputFile(file2_bytes, filename="Акт приёмки-сдачи услуг.docx"))
-    doc3 = InputMediaDocument(media=BufferedInputFile(file3_bytes, filename="Расписка о получении денежных средств.docx"))
+    doc3 = InputMediaDocument(
+        media=BufferedInputFile(file3_bytes, filename="Расписка о получении денежных средств.docx"))
 
     media = [doc1, doc2, doc3]
 
@@ -176,7 +181,8 @@ async def show_messages_for_application(state, bot: Bot, avito_chat_id, avito_us
 
     text = (
         "*Дествия с зявкой:*\n_Завершить работу_ \- работа по зявке полностью выполнена, оплата получена\n_Отказаться "
-        "от заявки_ \- отказ от работы с заявкой, вы больше не сможете взять эту заявку")
+        "от заявки_ \- отказ от работы с заявкой, вы больше не сможете взять эту заявку, вам будет возвращена половина "
+        "заплаченной комиссии")
 
     await send_state_message(
         state=state,
@@ -188,7 +194,7 @@ async def show_messages_for_application(state, bot: Bot, avito_chat_id, avito_us
     )
 
     for message in messages:
-        sleep(0.2)
+        sleep(0.3)
         if message['author_id'] == int(author_id):
             name = username
         else:
@@ -247,7 +253,6 @@ async def send_message_for_application(avito_user_id, avito_chat_id, text):
 
 
 async def show_new_item_for_admin(session, bot: Bot, url, item_id, avito_item_id, chat_id=None):
-
     filters = [
         User.admin == True,
     ]
@@ -263,6 +268,7 @@ async def show_new_item_for_admin(session, bot: Bot, url, item_id, avito_item_id
     text = f"<b>У вас новое объявление:</b>\n\nID: {avito_item_id}\nURL: {url}\n\n Добавьте локацию к этому объявлению"
 
     for user in users:
+        sleep(0.1)
         try:
             m = await bot.send_message(
                 chat_id=user.telegram_chat_id,
@@ -276,8 +282,8 @@ async def show_new_item_for_admin(session, bot: Bot, url, item_id, avito_item_id
                 telegram_chat_id=user.telegram_chat_id,
             )
             session.add(new_item_addiction)
-        except:
-            ...
+        except Exception as e:
+            print(e)
 
 
 async def show_confirmation_for_admins(session, confirmation, author_user, bot: Bot):
@@ -287,6 +293,7 @@ async def show_confirmation_for_admins(session, confirmation, author_user, bot: 
     users = result.scalars().all()
 
     for user in users:
+        sleep(0.1)
         try:
             text = (f"Перевод от {author_user.name}\nНомер телефона: <b>{author_user.phone}</b>\nКод пользователя: "
                     f"<b>{confirmation.telegram_user_id}</b>\nСумма: <b>{confirmation.amount}</b>")
@@ -302,5 +309,5 @@ async def show_confirmation_for_admins(session, confirmation, author_user, bot: 
                 telegram_chat_id=user.telegram_chat_id,
             )
             session.add(new_conf_addiction)
-        except:
-            ...
+        except Exception as e:
+            print(e)

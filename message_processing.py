@@ -125,13 +125,16 @@ async def delete_message_ids(session, bot, telegram_chat_id):
             return
 
         ids = eval(user.income_message_ids)
+        chunks = split_list(ids, 50)
 
         if isinstance(ids, list) and len(ids) != 0:
-            await delete_messages(
-                bot=bot,
-                ids=ids,
-                chat_id=telegram_chat_id
-            )
+            for chunk in chunks:
+                sleep(0.5)
+                await delete_messages(
+                    bot=bot,
+                    ids=chunk,
+                    chat_id=telegram_chat_id
+                )
 
         user.income_message_ids = "[]"
     except Exception as e:

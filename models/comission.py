@@ -1,9 +1,9 @@
 from db import Base
-from sqlalchemy import Column, Integer
+from sqlalchemy import Column, Integer, Float
 
 
 class Commission(Base):
     __tablename__ = 'commission'
     id: int = Column(Integer, primary_key=True)
-    fixed: int = Column(Integer, nullable=False)
-    percent: int = Column(Integer, nullable=False)
+    fixed: float = Column(Float, nullable=False)
+    percent: float = Column(Float, nullable=False)

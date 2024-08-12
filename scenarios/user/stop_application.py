@@ -1,3 +1,5 @@
+from time import sleep
+
 from aiogram import Router, Bot, F, types
 from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
@@ -151,6 +153,7 @@ def load_handlers(dp, bot: Bot):
                     admin_users = result.scalars().all()
 
                     for u in admin_users:
+                        sleep(0.2)
                         try:
                             text = (f"Пользователь отменил заявку, требуется вернуть комиссию в размере "
                                     f"<b>{int(application.com_value) / 2} руб.</b> на карту <b>{number}</b>")
@@ -159,8 +162,8 @@ def load_handlers(dp, bot: Bot):
                                 text=text,
                                 parse_mode=ParseMode.HTML,
                             )
-                        except:
-                            ...
+                        except Exception as e:
+                            print(e)
 
                     mask = Mask(
                         application_id=application.id,
@@ -172,7 +175,8 @@ def load_handlers(dp, bot: Bot):
                     application.in_working = False
                     application.working_user_id = -1
                     application.pay_type = "None"
-                    application.income += int(application.com_value) / 2
+                    application.waiting_confirmation = False
+                    application.income += round(application.com_value / 2, 2)
                     application.com_value = 0
                     user.in_working = False
 

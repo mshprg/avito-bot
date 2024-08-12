@@ -79,7 +79,7 @@ def create_confirmation_keyboard():
 
 def create_application_actions_keyboard():
     return generate_inline_markup([
-        ['Завешить работу', callbacks.FINISH_APPLICATION_CALLBACK],
+        ['Завешил работу', callbacks.FINISH_APPLICATION_CALLBACK],
         ['Отказаться от заявки', callbacks.STOP_APPLICATION_CALLBACK]
     ])
 

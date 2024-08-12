@@ -35,12 +35,12 @@ def load_handlers(dp, bot: Bot):
                         percent = commission.percent
                         fixed = commission.fixed
 
-                        text = f"*Текущие комиссии:*\n_Фикс\. комиссия_ \- {fixed} руб\.\n_Комиссия в процентах_ \- {percent}%"
+                        text = f"<b>Текущие комиссии:</b>\nФикс. комиссия - {fixed} руб.\nКомиссия в процентах - {percent}%"
                         await send_state_message(
                             state=state,
                             message=message,
                             text=text,
-                            parse_mode=ParseMode.MARKDOWN_V2,
+                            parse_mode=ParseMode.HTML,
                             keyboard=kb.create_manage_commission_keyboard(),
                             state_name="commission_ids"
                         )
@@ -82,7 +82,7 @@ def load_handlers(dp, bot: Bot):
                 message_id=message.message_id,
                 state_name="commission_ids"
             )
-            cm = int(message.text)
+            cm = float(message.text)
             async with AsyncSessionLocal() as session:
                 async with session.begin():
                     result = await session.execute(
@@ -129,7 +129,7 @@ def load_handlers(dp, bot: Bot):
                 message_id=message.message_id,
                 state_name="commission_ids"
             )
-            cm = int(message.text)
+            cm = float(message.text)
             async with AsyncSessionLocal() as session:
                 async with session.begin():
                     result = await session.execute(
