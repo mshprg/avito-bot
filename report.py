@@ -143,9 +143,9 @@ async def collect_data(session, start_unix, end_unix):
     excel_bytes = output.getvalue()
 
     if end_unix - start_unix >= 86400000 * 1.3:
-        date_str = datetime.fromtimestamp(start_unix).strftime("%m-%Y")
+        date_str = datetime.fromtimestamp(end_unix).strftime("%m-%Y")
     else:
-        date_str = datetime.fromtimestamp(start_unix).strftime("%d-%m-%Y")
+        date_str = datetime.fromtimestamp(end_unix).strftime("%d-%m-%Y")
 
     report = InputMediaDocument(
         media=BufferedInputFile(
