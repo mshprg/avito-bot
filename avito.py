@@ -195,8 +195,11 @@ async def handle_webhook_message(request):
         drop_old_handled_messages(m_id, chat_id)
     else:
         for i in range(len(application_chat_ids)):
-            if application_chat_ids[i]['message_id'] != m_id and application_chat_ids[i]['chat_id'] != chat_id:
-                application_chat_ids[i]['counter'] = COUNT_OTHER_MESSAGES
+            try:
+                if application_chat_ids[i]['message_id'] != m_id and application_chat_ids[i]['chat_id'] != chat_id:
+                    application_chat_ids[i]['counter'] = COUNT_OTHER_MESSAGES
+            except Exception as e:
+                print("Reset counter for old webhook:", e)
         return
 
     d = {'is_f': True}
@@ -215,7 +218,7 @@ async def handle_webhook_message(request):
         messages = get_messages(user_id, chat_id)['messages']
         count_messages = count_author_messages(messages, author_id)
 
-        if count_messages <= 1000 and author_id != user_id:
+        if count_messages <= 1 and author_id != user_id:
             await add_new_application(
                 user_id=user_id,
                 chat_id=chat_id,
