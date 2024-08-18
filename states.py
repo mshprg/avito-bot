@@ -38,5 +38,6 @@ class States(StatesGroup):
     feedback_admin_ids = State()
     confirmation_admin_ids = State()
     ban_ids = State()
+    user_ids = State()
 
     feedback_ids = State()

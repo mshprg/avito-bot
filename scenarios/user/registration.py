@@ -1,16 +1,18 @@
+import os
 import re
 
 from aiogram import Router, Bot, types, F
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
+from aiogram.types import InputMediaVideo, BufferedInputFile
 from sqlalchemy import select
 
 import callbacks
 import config
 import kb
 from db import AsyncSessionLocal
-from message_processing import delete_state_messages, send_state_message, add_state_id
+from message_processing import delete_state_messages, send_state_message, add_state_id, send_state_media
 from models.city import City
 from models.user import User
 from states import States
@@ -176,6 +178,24 @@ def load_handlers(dp, bot: Bot):
 
             await state.update_data(city=message.text)
 
+            current_dir = os.getcwd()
+
+            path_1 = os.path.join(current_dir, "files/document_1.mp4")
+            path_2 = os.path.join(current_dir, "files/document_2.mp4")
+            path_3 = os.path.join(current_dir, "files/document_3.mp4")
+
+            file1_bytes = open(path_1, "rb").read()
+            file2_bytes = open(path_2, "rb").read()
+            file3_bytes = open(path_3, "rb").read()
+
+            doc1 = InputMediaVideo(
+                media=BufferedInputFile(file1_bytes, filename="Обущающее видео №1.mp4"))
+            doc2 = InputMediaVideo(media=BufferedInputFile(file2_bytes, filename="Обущающее видео №2.mp4"))
+            doc3 = InputMediaVideo(
+                media=BufferedInputFile(file3_bytes, filename="Обущающее видео №3.mp4"))
+
+            media = [doc1, doc2, doc3]
+
             policy_url = 'https://telegra.ph/Politika-obrabotki-personalnyh-dannyh-07-24-2'
             agreement_url = 'https://telegra.ph/Polzovatelskoe-soglashenie-07-24-11'
 
@@ -186,8 +206,15 @@ def load_handlers(dp, bot: Bot):
             await send_state_message(
                 state=state,
                 message=message,
-                text="Ознакомительное видео:",
+                text="Ознакомительные видео:\n(ожидайте загрузки)",
                 keyboard=types.ReplyKeyboardRemove()
+            )
+
+            await send_state_media(
+                state=state,
+                chat_id=message.chat.id,
+                media=media,
+                bot=bot
             )
 
             await send_state_message(

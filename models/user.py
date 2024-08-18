@@ -14,3 +14,16 @@ class User(Base):
     admin: bool = Column(Boolean, nullable=False, default=False)
     banned: bool = Column(Boolean, nullable=False, default=False)
     income_message_ids: str = Column(String, nullable=False, default="[]")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'telegram_user_id': self.telegram_user_id,
+            'telegram_chat_id': self.telegram_chat_id,
+            'phone': self.phone,
+            'name': self.name,
+            'city': self.city,
+            'in_working': self.in_working,
+            'admin': self.admin,
+            'banned': self.banned,
+        }

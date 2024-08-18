@@ -1,15 +1,20 @@
 import asyncio
 import logging
+from time import sleep
 
 import pytz
 from aiogram import Bot, Dispatcher
+from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from apscheduler.jobstores.base import ConflictingIdError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
+
+from models.user import User
 from scenarios import handlers, handlers_admin
-from scenarios.admin import (ban_users, generate_report, manage_admins, manage_cities, manage_commission,
-                             manage_confirmations, manage_items, manage_questions_improvements, manage_requisites)
+from scenarios.admin import ban_users, generate_report, manage_admins, manage_cities, manage_commission,\
+                             manage_confirmations, manage_items, manage_questions_improvements, manage_requisites,\
+                            manage_users
 from scenarios.user import (create_feedback, finish_application, open_application, registration, stop_application,
                             user_improvements_questions)
 from db import init_db, AsyncSessionLocal
@@ -55,6 +60,7 @@ async def start_bot():
     manage_items.load_handlers(dp, bot)
     manage_questions_improvements.load_handlers(dp, bot)
     manage_requisites.load_handlers(dp, bot)
+    manage_users.load_handlers(dp, bot)
 
     create_feedback.load_handlers(dp, bot)
     finish_application.load_handlers(dp, bot)
@@ -62,6 +68,8 @@ async def start_bot():
     registration.load_handlers(dp, bot)
     stop_application.load_handlers(dp, bot)
     user_improvements_questions.load_handlers(dp, bot)
+
+    users = []
 
     async with AsyncSessionLocal() as session:
         async with session.begin():
@@ -99,7 +107,28 @@ async def start_bot():
                 )
                 session.add(city)
 
+            result = await session.execute(
+                select(User)
+            )
+            users_db = result.scalars().all()
+
+            for u in users_db:
+                users.append(u.to_dict())
+
         await session.commit()
+
+    for user in users:
+        text = ("<b>Внимание!</b>\nБот был перезагружен, для корректной работы требуется очистить чат и запустить "
+                "команду <b>/reload</b>")
+        try:
+            sleep(1)
+            await bot.send_message(
+                chat_id=user['telegram_chat_id'],
+                text=text,
+                parse_mode=ParseMode.HTML
+            )
+        except Exception as e:
+            print(e)
 
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 

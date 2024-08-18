@@ -151,7 +151,8 @@ def load_handlers_admin(dp, bot: Bot):
     @router.callback_query(F.data == callbacks.DELETE_MESSAGES_CALLBACK)
     async def delete_admin_messages(callback_query: types.CallbackQuery, state: FSMContext):
         state_ids = ["admin_ids", "commission_ids", "requisites_ids", "cities_ids", "make_admin_ids", "report_ids",
-                     "location_ids", "feedback_ids", "feedback_admin_ids", "confirmation_admin_ids", "ban_ids"]
+                     "location_ids", "feedback_ids", "feedback_admin_ids", "confirmation_admin_ids", "ban_ids",
+                     "user_ids"]
         try:
             for state_name in state_ids:
                 data = await state.get_data()

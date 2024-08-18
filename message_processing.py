@@ -25,6 +25,19 @@ async def delayed_execution(func, *args, **kwargs):
     await func(*args, **kwargs)
 
 
+async def try_send_message(func, count=5, **kwargs):
+    res = None
+    try:
+        res = await func(**kwargs)
+    except Exception as e:
+        count -= 1
+        print(e)
+        sleep(4)
+        if count > 0:
+            res = await try_send_message(func=func, count=count, **kwargs)
+    return res
+
+
 def split_list(arr, chunk_size):
     return [arr[i:i + chunk_size] for i in range(0, len(arr), chunk_size)]
 
@@ -43,6 +56,13 @@ async def send_state_message(state, message=None, text=None, keyboard=None, chat
                              parse_mode=None, state_name: str = "ids") -> Message | None:
     try:
         if chat_id is not None and bot is not None:
+            # m = await try_send_message(
+            #     func=bot.send_message,
+            #     chat_id=chat_id,
+            #     text=text,
+            #     reply_markup=keyboard,
+            #     parse_mode=parse_mode,
+            # )
             m = await bot.send_message(
                 chat_id=chat_id,
                 text=text,
@@ -50,6 +70,10 @@ async def send_state_message(state, message=None, text=None, keyboard=None, chat
                 parse_mode=parse_mode,
             )
         else:
+            # m = await try_send_message(
+            #     func=message.answer,
+            #     text=text, reply_markup=keyboard, parse_mode=parse_mode
+            # )
             m = await message.answer(text=text, reply_markup=keyboard, parse_mode=parse_mode)
         data = await state.get_data()
         ids = data.get(state_name, [])

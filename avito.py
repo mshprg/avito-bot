@@ -15,7 +15,8 @@ from models.application import Application
 from models.item import Item
 from models.user import User
 
-handled_message = []
+application_chat_ids = []
+COUNT_OTHER_MESSAGES = 7
 token_info = None
 
 
@@ -134,6 +135,32 @@ def get_username(chat_info, user_id):
     return None
 
 
+def count_author_messages(messages, author_id):
+    counter = 0
+    for m in messages:
+        if m['author_id'] == author_id:
+            counter += 1
+    return counter
+
+
+def find_handled_message(message_id, chat_id):
+    for obj in application_chat_ids:
+        if obj['message_id'] == message_id and obj['chat_id'] == chat_id:
+            return True
+    return False
+
+
+def drop_old_handled_messages(message_id, chat_id):
+    for i in range(len(application_chat_ids)):
+        try:
+            if application_chat_ids[i]['message_id'] != message_id or application_chat_ids[i]['chat_id'] != chat_id:
+                application_chat_ids[i]['counter'] -= 1
+                if application_chat_ids[i]['counter'] <= 0:
+                    application_chat_ids.pop(i)
+        except Exception as e:
+            print("drop_old_handled_messages error:", e)
+
+
 async def handle_webhook_message(request):
     get_token_info()
     data = await request.json()
@@ -156,7 +183,21 @@ async def handle_webhook_message(request):
     if chat_id is None or chat_id == '0':
         return
 
-    messages = get_messages(user_id, chat_id)['messages']
+    for a in application_chat_ids:
+        print(a)
+
+    if not find_handled_message(m_id, chat_id):
+        application_chat_ids.append({
+            'message_id': m_id,
+            'chat_id': chat_id,
+            'counter': COUNT_OTHER_MESSAGES,
+        })
+        drop_old_handled_messages(m_id, chat_id)
+    else:
+        for i in range(len(application_chat_ids)):
+            if application_chat_ids[i]['message_id'] != m_id and application_chat_ids[i]['chat_id'] != chat_id:
+                application_chat_ids[i]['counter'] = COUNT_OTHER_MESSAGES
+        return
 
     d = {'is_f': True}
     async with AsyncSessionLocal() as session:
@@ -170,9 +211,11 @@ async def handle_webhook_message(request):
                 d['is_f'] = False
 
     if d['is_f']:
-        length = len(messages)
-        print("Length messages = ", length, "- - - - - - - -")
-        if length == 1:
+
+        messages = get_messages(user_id, chat_id)['messages']
+        count_messages = count_author_messages(messages, author_id)
+
+        if count_messages <= 1000 and author_id != user_id:
             await add_new_application(
                 user_id=user_id,
                 chat_id=chat_id,
@@ -182,9 +225,6 @@ async def handle_webhook_message(request):
                 author_id=author_id,
                 created=created
             )
-        if length == 2:
-            print("chat_id: ", chat_id)
-            print("#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n")
     else:
         await send_user_message(
             user_id=user_id,
@@ -266,7 +306,7 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
             )
             application_db = result.scalars().first()
 
-            if application_db is None and author_id != user_id and int(chat['context']['value']['id']) != 0:
+            if application_db is None and int(chat['context']['value']['id']) != 0:
 
                 result = await session.execute(
                     select(Item).filter(Item.avito_item_id == int(chat['context']['value']['id']))
