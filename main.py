@@ -128,7 +128,9 @@ async def start_bot():
                 parse_mode=ParseMode.HTML
             )
         except Exception as e:
-            print(e)
+            print("Send restart message:", e)
+
+    print("| - - - - - Starting - - - - - |")
 
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
