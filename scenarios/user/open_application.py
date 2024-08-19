@@ -244,11 +244,6 @@ def load_handlers(dp, bot: Bot):
                     data = await state.get_data()
                     pay_type = data.get("pay_type")
 
-                    if pay_type is None:
-                        return
-                        # await state.update_data(pay_type="percent")
-                        # pay_type = "percent"
-
                     result = await session.execute(
                         select(User).filter(
                             User.telegram_user_id == callback_query.from_user.id)
@@ -265,6 +260,11 @@ def load_handlers(dp, bot: Bot):
 
                     if user.admin:
                         pay_type = "admin"
+
+                    if pay_type is None:
+                        return
+                        # await state.update_data(pay_type="percent")
+                        # pay_type = "percent"
 
                     result = await session.execute(
                         select(Addiction).filter(
