@@ -42,3 +42,5 @@ class States(StatesGroup):
 
     feedback_ids = State()
     video_ids = State()
+
+    test_file = State()
