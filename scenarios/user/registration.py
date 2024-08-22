@@ -200,9 +200,9 @@ def load_handlers(dp, bot: Bot):
             await state.update_data(city=message.text)
 
             media = [
-                InputMediaVideo(media='BAACAgIAAxkBAAIiWGbHYwABvQvMhSju-GRVEXM4p1VznQACm1UAAhiWOUqv8qdtGNZURjUE'),
-                InputMediaVideo(media='BAACAgIAAxkBAAIiWWbHYwABGUVJsKzvRVA9JwSzwPCTrwACn1UAAhiWOUrhhGNy1_uKDDUE'),
-                InputMediaVideo(media='BAACAgIAAxkBAAIiWmbHYwABnQ4eNSy5WYgbxsUmkWkq9wACo1UAAhiWOUoAAeFQv1rVYho1BA')
+                InputMediaVideo(media='BAACAgIAAxkBAAIcFmbHzfVmDRjILdprqCvC0qafunmUAAJxTAACRedAStenQseCZodmNQQ'),
+                InputMediaVideo(media='BAACAgIAAxkBAAIcF2bHzfVnkMcmL3B6vL0G5ip3oLJFAAJyTAACRedASmeuxIUdxcoMNQQ'),
+                InputMediaVideo(media='BAACAgIAAxkBAAIcGGbHzfVI-phdmyBpkLeW3eIdjK0FAAJzTAACRedASv7gevgwIDWFNQQ')
             ]
 
             await send_state_message(

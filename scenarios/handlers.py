@@ -1,5 +1,4 @@
 from aiogram import Router, types, Bot
-from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from sqlalchemy import select, and_
 from applications import send_message_for_application
@@ -61,13 +60,5 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
             await state.set_state(States.message)
-
-    @router.message(Command('file'), StateFilter("*"))
-    async def test_command(message: types.Message, state: FSMContext):
-        await state.set_state(States.test_file)
-
-    @router.message(States.test_file)
-    async def test_file(message: types.Message, state: FSMContext):
-        print(message.video)
 
     dp.include_router(router)
