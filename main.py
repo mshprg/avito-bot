@@ -15,8 +15,8 @@ from scenarios import handlers, handlers_admin
 from scenarios.admin import ban_users, generate_report, manage_admins, manage_cities, manage_commission,\
                              manage_confirmations, manage_items, manage_questions_improvements, manage_requisites,\
                             manage_users
-from scenarios.user import (create_feedback, finish_application, open_application, registration, stop_application,
-                            user_improvements_questions)
+from scenarios.user import create_feedback, finish_application, open_application, registration, stop_application,\
+                            user_improvements_questions, show_educational_videos
 from db import init_db, AsyncSessionLocal
 import config
 import avito
@@ -63,6 +63,7 @@ async def start_bot():
     manage_users.load_handlers(dp, bot)
 
     create_feedback.load_handlers(dp, bot)
+    show_educational_videos.load_handlers(dp, bot)
     finish_application.load_handlers(dp, bot)
     open_application.load_handlers(dp, bot)
     registration.load_handlers(dp, bot)

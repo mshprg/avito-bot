@@ -1,11 +1,10 @@
-import os
 import re
 
 from aiogram import Router, Bot, types, F
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InputMediaVideo, BufferedInputFile
+from aiogram.types import InputMediaVideo
 from sqlalchemy import select
 
 import callbacks
@@ -23,7 +22,7 @@ def load_handlers(dp, bot: Bot):
     from applications import show_applications
 
     @router.message(F.text, Command('start'))
-    async def registration_user(message: types.Message, state: FSMContext):
+    async def policy_accept(message: types.Message, state: FSMContext):
         try:
             user_id: int = message.from_user.id
             async with AsyncSessionLocal() as session:
@@ -45,12 +44,34 @@ def load_handlers(dp, bot: Bot):
                         )
                         return
 
+                    policy_url = 'https://telegra.ph/Politika-obrabotki-personalnyh-dannyh-07-24-2'
+                    agreement_url = 'https://telegra.ph/Polzovatelskoe-soglashenie-07-24-11'
+
+                    text = (
+                        f"Нажимая на кнопку <b>Далее</b>, вы соглашаетесь с <a href='{policy_url}'>Политикой "
+                        f"обработки персональных данных</a> и <a href='{agreement_url}'>Пользовательским "
+                        f"соглашением</a>")
+
                     await send_state_message(
                         state=state,
                         message=message,
-                        text="Введите ваше ФИО в формате:\nФамилия Имя Отчество"
+                        text=text,
+                        parse_mode=ParseMode.HTML,
+                        keyboard=kb.create_policy_accept_callback()
                     )
-                    await state.set_state(States.name)
+        except Exception as e:
+            print(e)
+
+    @router.callback_query(F.data == callbacks.POLICY_ACCEPT_CALLBACK)
+    async def registration_start(callback_query: types.CallbackQuery, state: FSMContext):
+        try:
+            await send_state_message(
+                state=state,
+                message=callback_query.message,
+                text="Введите ваше ФИО в формате:\nФамилия Имя Отчество",
+            )
+
+            await state.set_state(States.name)
         except Exception as e:
             print(e)
 
@@ -178,35 +199,16 @@ def load_handlers(dp, bot: Bot):
 
             await state.update_data(city=message.text)
 
-            current_dir = os.getcwd()
-
-            path_1 = os.path.join(current_dir, "files/document_1.mp4")
-            path_2 = os.path.join(current_dir, "files/document_2.mp4")
-            path_3 = os.path.join(current_dir, "files/document_3.mp4")
-
-            file1_bytes = open(path_1, "rb").read()
-            file2_bytes = open(path_2, "rb").read()
-            file3_bytes = open(path_3, "rb").read()
-
-            doc1 = InputMediaVideo(
-                media=BufferedInputFile(file1_bytes, filename="Обущающее видео №1.mp4"))
-            doc2 = InputMediaVideo(media=BufferedInputFile(file2_bytes, filename="Обущающее видео №2.mp4"))
-            doc3 = InputMediaVideo(
-                media=BufferedInputFile(file3_bytes, filename="Обущающее видео №3.mp4"))
-
-            media = [doc1, doc2, doc3]
-
-            policy_url = 'https://telegra.ph/Politika-obrabotki-personalnyh-dannyh-07-24-2'
-            agreement_url = 'https://telegra.ph/Polzovatelskoe-soglashenie-07-24-11'
-
-            text = (f"Нажимая на кнопку <b>Показать заявки</b>, вы соглашаетесь с <a href='{policy_url}'>Политикой "
-                    f"обработки персональных данных</a> и <a href='{agreement_url}'>Пользовательским "
-                    f"соглашением</a>\n<b>Видео поможет ознакомиться с работой бота</b>")
+            media = [
+                InputMediaVideo(media='BAACAgIAAxkBAAIiWGbHYwABvQvMhSju-GRVEXM4p1VznQACm1UAAhiWOUqv8qdtGNZURjUE'),
+                InputMediaVideo(media='BAACAgIAAxkBAAIiWWbHYwABGUVJsKzvRVA9JwSzwPCTrwACn1UAAhiWOUrhhGNy1_uKDDUE'),
+                InputMediaVideo(media='BAACAgIAAxkBAAIiWmbHYwABnQ4eNSy5WYgbxsUmkWkq9wACo1UAAhiWOUoAAeFQv1rVYho1BA')
+            ]
 
             await send_state_message(
                 state=state,
                 message=message,
-                text="Ознакомительные видео:\n(ожидайте загрузки)",
+                text="Ознакомительные видео:\n",
                 keyboard=types.ReplyKeyboardRemove()
             )
 
@@ -220,14 +222,14 @@ def load_handlers(dp, bot: Bot):
             await send_state_message(
                 state=state,
                 message=message,
-                text=text,
+                text="<b>Видео помогут ознакомиться с работой бота</b>",
                 parse_mode=ParseMode.HTML,
-                keyboard=kb.create_video_keyboard()
+                keyboard=kb.create_show_applications_keyboard()
             )
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.WATCHED_VIDEO_CALLBACK)
+    @router.callback_query(F.data == callbacks.SHOW_APPLICATIONS_CALLBACK)
     async def show_application_for_user(callback_query: types.CallbackQuery, state: FSMContext):
 
         async with AsyncSessionLocal() as session:

@@ -41,3 +41,4 @@ class States(StatesGroup):
     user_ids = State()
 
     feedback_ids = State()
+    video_ids = State()

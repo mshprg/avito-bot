@@ -27,8 +27,15 @@ def create_cities_keyboard(cities):
 
 
 def create_feedback_keyboard():
-    button = KeyboardButton(text="Обратная связь")
-    return ReplyKeyboardMarkup(keyboard=[[button]])
+    button_1 = KeyboardButton(text="Обратная связь")
+    button_2 = KeyboardButton(text="Обучающие видео")
+    return ReplyKeyboardMarkup(keyboard=[[button_1], [button_2]])
+
+
+def create_policy_accept_callback():
+    return generate_inline_markup([
+        ['Далее', callbacks.POLICY_ACCEPT_CALLBACK]
+    ])
 
 
 def create_feedback_actions_keyboard():
@@ -44,14 +51,20 @@ def create_clear_feedback_keyboard():
     ])
 
 
+def create_clear_video_keyboard():
+    return generate_inline_markup([
+        ['Удалить видео', callbacks.DELETE_MESSAGES_CALLBACK],
+    ])
+
+
 def create_answer_feedback_keyboard():
     return generate_inline_markup([
         ['Ответить на вопрос', callbacks.ANSWER_QUESTION_CALLBACK],
     ])
 
 
-def create_video_keyboard():
-    return generate_inline_markup([['Показать заявки', callbacks.WATCHED_VIDEO_CALLBACK]])
+def create_show_applications_keyboard():
+    return generate_inline_markup([['Показать заявки', callbacks.SHOW_APPLICATIONS_CALLBACK]])
 
 
 def create_application_keyboard():

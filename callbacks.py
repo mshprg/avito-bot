@@ -1,4 +1,6 @@
-WATCHED_VIDEO_CALLBACK = "watched_video_callback"
+POLICY_ACCEPT_CALLBACK = "policy_accept_callback"
+
+SHOW_APPLICATIONS_CALLBACK = "show_applications_callback"
 
 SET_APPLICATION_CALLBACK = "select_application_callback"
 SELECT_FIXED_CALLBACK = "select_fixed_callback"
