@@ -68,6 +68,8 @@ def load_handlers(dp, bot: Bot):
 
     @router.message(States.test_file)
     async def test_file(message: types.Message, state: FSMContext):
-        print(message.video)
+        file = open("file_video.txt", "a+")
+        file.write(str(message.video), "\n\n\n")
+        file.close()
 
     dp.include_router(router)
