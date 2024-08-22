@@ -118,9 +118,6 @@ async def start_bot():
 
         await session.commit()
 
-    # TODO: Убрать костыль
-    users = []
-
     for user in users:
         text = ("<b>Внимание!</b>\nБот был перезагружен, для корректной работы требуется очистить чат и запустить "
                 "команду <b>/reload</b>")
