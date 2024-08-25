@@ -178,7 +178,7 @@ def load_handlers(dp, bot: Bot):
                            f"{user.phone}\nОплата за работу: {application.price} руб.\n"
                            f"Исполнитель получил с учетом комиссии: {user_income} руб.\n"
                            f"Комиссия: {comm} руб.\n"
-                           f"Заработано на заявке: {application.income} руб.")
+                           f"Заработано на заявке за всё время: {application.income} руб.")
 
                 for m in media:
                     media_to_send.append(
