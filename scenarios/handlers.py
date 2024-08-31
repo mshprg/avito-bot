@@ -1,10 +1,8 @@
 from aiogram import Router, types, Bot
 from aiogram.fsm.context import FSMContext
-from sqlalchemy import select, and_
-from applications import send_message_for_application
+from applications import send_message_for_application, get_application_by_user
 from db import AsyncSessionLocal
 from filters import UserFilter
-from models.application import Application
 from states import States
 from message_processing import add_state_id
 
@@ -33,13 +31,7 @@ def load_handlers(dp, bot: Bot):
             if avito_info is None:
                 async with AsyncSessionLocal() as session:
                     async with session.begin():
-                        result = await session.execute(
-                            select(Application).filter(and_(
-                                Application.working_user_id == message.from_user.id,
-                                Application.in_working == True
-                            ))
-                        )
-                        application = result.scalars().first()
+                        application, _ = await get_application_by_user(session, message.from_user.id)
 
                         avito_chat_id = str(application.avito_chat_id)
                         avito_user_id = str(application.user_id)

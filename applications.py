@@ -12,10 +12,10 @@ from message_processing import send_state_message, send_state_media
 from models.addiction import Addiction
 from models.application import Application
 from db import AsyncSessionLocal
-from models.confirmation_addiction import ConfirmationAddiction
 from models.item_addiction import ItemAddiction
 from models.mask import Mask
 from models.user import User
+from models.work import Work
 
 
 async def show_application(session, is_admin, application, user_city, bot: Bot, chat_id):
@@ -100,6 +100,7 @@ async def show_applications(bot, user_id, chat_id):
                 select(User).filter(and_(
                     User.telegram_user_id == user_id,
                     User.banned == False,
+                    User.in_waiting == False,
                 ))
             )
             user = result.scalars().first()
@@ -120,6 +121,7 @@ async def show_applications(bot, user_id, chat_id):
             filters = [
                 Application.in_working == False,
                 Application.working_user_id == -1,
+                Application.waiting_confirmation == False,
                 Application.item_location != "None",
             ]
 
@@ -286,28 +288,66 @@ async def show_new_item_for_admin(session, bot: Bot, url, item_id, avito_item_id
             print(e)
 
 
-async def show_confirmation_for_admins(session, confirmation, author_user, bot: Bot):
+async def delete_messages_for_application(session, bot: Bot, application_id, skip_user_ids=None):
+    if skip_user_ids is None:
+        skip_user_ids = []
     result = await session.execute(
-        select(User).filter(User.admin == True)
+        select(Addiction).filter(
+            Addiction.application_id == application_id)
     )
-    users = result.scalars().all()
+    addictions = result.scalars().all()
 
-    for user in users:
+    for ad in addictions:
         sleep(0.1)
+        if ad.telegram_chat_id in skip_user_ids:
+            continue
         try:
-            text = (f"Перевод от {author_user.name}\nНомер телефона: <b>{author_user.phone}</b>\nКод пользователя: "
-                    f"<b>{confirmation.telegram_user_id}</b>\nСумма: <b>{confirmation.amount}</b>")
-            m = await bot.send_message(
-                chat_id=user.telegram_chat_id,
-                text=text,
-                reply_markup=kb.create_new_confirmation_actions(),
-                parse_mode=ParseMode.HTML
+            await bot.delete_message(
+                chat_id=ad.telegram_chat_id,
+                message_id=ad.telegram_message_id,
             )
-            new_conf_addiction = ConfirmationAddiction(
-                confirmation_id=confirmation.id,
-                telegram_message_id=m.message_id,
-                telegram_chat_id=user.telegram_chat_id,
-            )
-            session.add(new_conf_addiction)
         except Exception as e:
             print(e)
+        await session.delete(ad)
+
+
+async def delete_applications_for_user(session, bot: Bot, telegram_chat_id, skip_ids=None):
+    if skip_ids is None:
+        skip_ids = []
+    result = await session.execute(
+        select(Addiction).filter(
+            Addiction.telegram_chat_id == telegram_chat_id)
+    )
+    current_user_addictions = result.scalars().all()
+
+    for ad in current_user_addictions:
+        sleep(0.1)
+        if ad.application_id in skip_ids:
+            continue
+        try:
+            await bot.delete_message(
+                chat_id=ad.telegram_chat_id,
+                message_id=ad.telegram_message_id,
+            )
+        except Exception as e:
+            print(e)
+        await session.delete(ad)
+
+
+# Working only in session!!!
+async def get_application_by_user(session, user_id):
+    result = await session.execute(
+        select(Work).filter(and_(
+            Work.telegram_user_id == user_id
+        ))
+    )
+    work = result.scalars().first()
+
+    result = await session.execute(
+        select(Application).filter(
+            Application.id == work.application_id
+        )
+    )
+    application = result.scalars().first()
+
+    return application, work

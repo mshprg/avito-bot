@@ -1,5 +1,3 @@
-from time import sleep, time
-
 from aiogram import Router, Bot, types, F
 from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
@@ -12,9 +10,9 @@ from filters import UserFilter
 from models.addiction import Addiction
 from models.application import Application
 from models.comission import Commission
-from models.confirmation import Confirmation
-from models.requisites import Requisites
+from models.payment import Payment
 from models.user import User
+from models.work import Work
 from states import States
 
 
@@ -60,7 +58,7 @@ def load_handlers(dp, bot: Bot):
 
                     text = (
                         "*Выберите способ оплаты комиссии:*\n_Фиксированная комиссия_ \- платите сразу\n_Процент от "
-                        "стоимости_ \- *\(функция временно недоступна\)* платите процент от стоимости заказа")
+                        "стоимости_ \- платите процент от стоимости заказа\n*После выбора действие отменить не получится*")
 
                     await bot.edit_message_text(
                         text=text,
@@ -75,6 +73,8 @@ def load_handlers(dp, bot: Bot):
 
     @router.callback_query(F.data == callbacks.SELECT_FIXED_CALLBACK, UserFilter())
     async def wait_paid(callback_query: types.CallbackQuery, state: FSMContext):
+        from robokassa.payment import create_payment_link
+        from applications import delete_messages_for_application, delete_applications_for_user
         try:
             async with AsyncSessionLocal() as session:
                 async with session.begin():
@@ -83,6 +83,12 @@ def load_handlers(dp, bot: Bot):
                             Addiction.telegram_message_id == callback_query.message.message_id)
                     )
                     addiction = result.scalars().first()
+
+                    result = await session.execute(
+                        select(User).filter(
+                            User.telegram_user_id == callback_query.from_user.id)
+                    )
+                    user = result.scalars().first()
 
                     if addiction is None:
                         await bot.delete_messages(
@@ -104,27 +110,44 @@ def load_handlers(dp, bot: Bot):
                         return
 
                     result = await session.execute(
-                        select(Requisites)
-                    )
-                    requisites = result.scalars().first()
-
-                    result = await session.execute(
                         select(Commission)
                     )
                     commission = result.scalars().first()
 
-                    text = (
-                        f"<b>Требуется оплатить комиссию:</b>\n\nНомер карты - <b>{requisites.card_number}</b>\nCумма оплаты: "
-                        f"<b>{commission.fixed}</b> руб\nВ сообщении к переводу укажите номер: "
-                        f"<b>{callback_query.from_user.id}</b>")
+                    await delete_messages_for_application(
+                        session, bot, application.id, skip_user_ids=[user.telegram_user_id])
+
+                    await session.flush()
+
+                    await delete_applications_for_user(
+                        session=session,
+                        bot=bot,
+                        telegram_chat_id=user.telegram_chat_id,
+                        skip_ids=[application.id]
+                    )
+
+                    link = await create_payment_link(
+                        amount=commission.fixed,
+                        phone=user.phone,
+                        application_id=application.id,
+                        telegram_user_id=user.telegram_user_id,
+                        telegram_message_id=callback_query.message.message_id,
+                        type_payment="admin" if user.admin else "fixed",
+                        type_action="open",
+                    )
+
+                    text = (f"<b>!НЕ УДАЛЯЙТЕ ЭТО СООБЩЕНИЕ!</b>\nВы можете оплатить комиссию, перейдя по "
+                            f"<a href='{link}'>ссылке</a>\nПосле оплаты заявка станет доступна")
 
                     await bot.edit_message_text(
                         text=text,
                         chat_id=callback_query.message.chat.id,
                         message_id=callback_query.message.message_id,
-                        reply_markup=kb.create_paid_fixed_callback(),
                         parse_mode=ParseMode.HTML,
                     )
+
+                    user.in_waiting = True
+                    application.waiting_confirmation = True
 
                     await state.update_data(pay_type="fixed")
 
@@ -133,138 +156,13 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
-    @router.callback_query(F.data == callbacks.PAID_FIXED_CALLBACK, UserFilter())
-    async def paid_fixed_callback(callback_query: types.CallbackQuery):
-        from applications import show_confirmation_for_admins
-        try:
-            async with AsyncSessionLocal() as session:
-                async with session.begin():
-                    text = ("<b>НЕ УДАЛЯЙТЕ ЭТО СООБЩЕНИЕ</b>\nВы сможете открыть заявку как только администратор "
-                            "подтвердит перевод")
-
-                    await bot.edit_message_text(
-                        chat_id=callback_query.message.chat.id,
-                        message_id=callback_query.message.message_id,
-                        text=text,
-                        parse_mode=ParseMode.HTML,
-                    )
-
-                    result = await session.execute(
-                        select(Commission)
-                    )
-                    commission = result.scalars().first()
-
-                    result = await session.execute(
-                        select(User).filter(
-                            User.telegram_user_id == callback_query.from_user.id)
-                    )
-                    user = result.scalars().first()
-                    user.in_working = True
-
-                    confirmation = Confirmation(
-                        telegram_user_id=callback_query.from_user.id,
-                        telegram_message_id=callback_query.message.message_id,
-                        amount=commission.fixed,
-                        created=round(time() * 1000),
-                        type="open"
-                    )
-                    session.add(confirmation)
-                    await session.flush()
-
-                    result = await session.execute(
-                        select(Addiction).filter(and_(
-                            Addiction.telegram_message_id == callback_query.message.message_id,
-                            Addiction.telegram_chat_id == callback_query.message.chat.id
-                        ))
-                    )
-                    user_addiction = result.scalars().first()
-
-                    result = await session.execute(
-                        select(Application).filter(
-                            Application.id == user_addiction.application_id)
-                    )
-                    application = result.scalars().first()
-
-                    application.waiting_confirmation = True
-
-                    result = await session.execute(
-                        select(Addiction).filter(
-                            Addiction.application_id == user_addiction.application_id)
-                    )
-                    app_addictions = result.scalars().all()
-
-                    result = await session.execute(
-                        select(Addiction).filter(
-                            Addiction.telegram_chat_id == callback_query.message.chat.id)
-                    )
-                    current_user_addictions = result.scalars().all()
-
-                    for ad in app_addictions:
-                        if ad.telegram_message_id != callback_query.message.message_id:
-                            sleep(0.1)
-                            try:
-                                await bot.delete_message(
-                                    chat_id=ad.telegram_chat_id,
-                                    message_id=ad.telegram_message_id,
-                                )
-                            except Exception as e:
-                                print(e)
-                            await session.delete(ad)
-
-                    for ad in current_user_addictions:
-                        if ad.telegram_message_id != callback_query.message.message_id:
-                            sleep(0.1)
-                            try:
-                                await bot.delete_message(
-                                    chat_id=ad.telegram_chat_id,
-                                    message_id=ad.telegram_message_id,
-                                )
-                            except Exception as e:
-                                print(e)
-                            await session.delete(ad)
-
-                    await show_confirmation_for_admins(
-                        session=session,
-                        confirmation=confirmation,
-                        author_user=user,
-                        bot=bot
-                    )
-
-                await session.commit()
-        except Exception as e:
-            print(e)
-
     @router.callback_query(F.data == callbacks.OPEN_APPLICATION_CALLBACK, UserFilter())
     async def set_application(callback_query: types.CallbackQuery, state: FSMContext):
+        from applications import delete_messages_for_application, delete_applications_for_user
         try:
             u, a = None, None
             async with AsyncSessionLocal() as session:
                 async with session.begin():
-
-                    data = await state.get_data()
-                    pay_type = data.get("pay_type")
-
-                    result = await session.execute(
-                        select(User).filter(
-                            User.telegram_user_id == callback_query.from_user.id)
-                    )
-                    user = result.scalars().first()
-
-                    result = await session.execute(
-                        select(Commission)
-                    )
-                    commission = result.scalars().first()
-
-                    if user is None:
-                        return
-
-                    if user.admin:
-                        pay_type = "admin"
-
-                    if pay_type is None:
-                        return
-                        # await state.update_data(pay_type="percent")
-                        # pay_type = "percent"
 
                     result = await session.execute(
                         select(Addiction).filter(
@@ -284,7 +182,47 @@ def load_handlers(dp, bot: Bot):
                     )
                     application = result.scalars().first()
 
+                    result = await session.execute(
+                        select(Payment).filter(and_(
+                            Payment.application_id == application.id,
+                            Payment.action == "open",
+                            Payment.telegram_user_id == callback_query.from_user.id,
+                        ))
+                    )
+                    payment = result.scalars().first()
+
+                    pay_type = ""
+                    if payment:
+                        pay_type = payment.type
+                    else:
+                        pay_type = "percent"
+
+                    result = await session.execute(
+                        select(User).filter(
+                            User.telegram_user_id == callback_query.from_user.id)
+                    )
+                    user = result.scalars().first()
+
+                    result = await session.execute(
+                        select(Commission)
+                    )
+                    commission = result.scalars().first()
+
+                    if user is None:
+                        return
+
+                    if user.admin:
+                        pay_type = "admin"
+
+                    if application is None or application.in_working:
+                        await bot.send_message(
+                            text="Данную зявку уже взяли",
+                            chat_id=callback_query.message.chat.id
+                        )
+                        return
+
                     user.in_working = True
+                    user.in_waiting = False
 
                     application.waiting_confirmation = False
                     application.in_working = True
@@ -295,41 +233,26 @@ def load_handlers(dp, bot: Bot):
                     elif pay_type == "fixed":
                         application.com_value = commission.fixed
 
-                    result = await session.execute(
-                        select(Addiction).filter(
-                            Addiction.application_id == application.id)
+                    work = Work(
+                        application_id=application.id,
+                        telegram_user_id=user.telegram_user_id
                     )
-                    addictions = result.scalars().all()
 
-                    for ad in addictions:
-                        sleep(0.1)
-                        try:
-                            await bot.delete_message(
-                                chat_id=ad.telegram_chat_id,
-                                message_id=ad.telegram_message_id,
-                            )
-                        except Exception as e:
-                            print(e)
-                        await session.delete(ad)
+                    session.add(work)
+
+                    try:
+                        await bot.delete_message(
+                            chat_id=user.telegram_chat_id,
+                            message_id=callback_query.message.id
+                        )
+                    except Exception as e:
+                        pass
+
+                    await delete_messages_for_application(session, bot, application.id)
 
                     await session.flush()
 
-                    result = await session.execute(
-                        select(Addiction).filter(
-                            Addiction.telegram_chat_id == user.telegram_chat_id)
-                    )
-                    current_user_addictions = result.scalars().all()
-
-                    for ad in current_user_addictions:
-                        sleep(0.1)
-                        try:
-                            await bot.delete_message(
-                                chat_id=ad.telegram_chat_id,
-                                message_id=ad.telegram_message_id,
-                            )
-                        except Exception as e:
-                            print(e)
-                        await session.delete(ad)
+                    await delete_applications_for_user(session, bot, user.telegram_chat_id)
 
                     u = {'telegram_chat_id': user.telegram_chat_id}
                     a = {

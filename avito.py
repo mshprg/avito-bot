@@ -218,7 +218,7 @@ async def handle_webhook_message(request):
         messages = get_messages(user_id, chat_id)['messages']
         count_messages = count_author_messages(messages, author_id)
 
-        if count_messages <= 1 and author_id != user_id:
+        if count_messages <= 1000 and author_id != user_id:
             await add_new_application(
                 user_id=user_id,
                 chat_id=chat_id,
@@ -362,6 +362,7 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
                         select(User).filter(and_(
                             User.in_working == False,
                             User.banned == False,
+                            User.in_waiting == False,
                         ))
                     )
                     users = result.scalars().all()
@@ -404,10 +405,11 @@ async def register_webhook():
                 print("Failed to register webhook", response_text)
 
 
-async def start_avito_webhook(function):
+async def start_avito_webhook(webhook_function, robokassa_function):
     await register_webhook()
     app = web.Application()
-    app.router.add_post(config.WEBHOOK_PATH, function)
+    app.router.add_post(config.WEBHOOK_PATH, webhook_function)
+    app.router.add_post(config.ROBOKASSA_PATH, robokassa_function)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, port=3001)

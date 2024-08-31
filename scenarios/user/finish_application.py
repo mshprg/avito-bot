@@ -15,10 +15,9 @@ from db import AsyncSessionLocal
 from filters import UserFilter
 from message_processing import delete_message_ids, delete_state_messages, send_state_message, add_state_id
 from models.application import Application
-from models.confirmation import Confirmation
 from models.image import Image
-from models.requisites import Requisites
 from models.user import User
+from robokassa.payment import create_payment_link
 from states import States
 
 media_groups = {}
@@ -105,7 +104,12 @@ def load_handlers(dp, bot: Bot):
                 await send_state_message(
                     state=state,
                     message=message,
-                    text="Теперь отправьте нам сумму, которую вы получили за работу (отправьте только число)"
+                    parse_mode=ParseMode.HTML,
+                    text="Теперь отправьте нам сумму, которую вы получили за работу (отправьте только число)\n"
+                         "<b>После ввода суммы данные будут отправлены админимтраторам для проверки, проверьте их "
+                         "корректность, при необходимости отправьте /cancel в следующем сообщении, а затем запустите "
+                         "/reload и заполните данные заново. Учтите что за отправку некорректных данных возможна "
+                         "блокировка вашего аккаунта</b>"
                 )
 
             await state.set_state(States.finish_price)
@@ -121,7 +125,7 @@ def load_handlers(dp, bot: Bot):
             media_groups.pop(message.from_user.id, None)
             print(e)
 
-    async def load_photos(user_id):
+    async def load_photos(user_id, application_id):
         media = media_groups[user_id]
 
         for photo in media:
@@ -132,10 +136,9 @@ def load_handlers(dp, bot: Bot):
             async with AsyncSessionLocal() as session:
                 async with session.begin():
                     result = await session.execute(
-                        select(Application).filter(and_(
-                            Application.working_user_id == user_id,
-                            Application.in_working == False,
-                        ))
+                        select(Application).filter(
+                            Application.id == application_id
+                        )
                     )
                     application = result.scalars().first()
                     image = Image(
@@ -154,10 +157,9 @@ def load_handlers(dp, bot: Bot):
                 users = result.scalars().all()
 
                 result = await session.execute(
-                    select(Application).filter(and_(
-                        Application.working_user_id == user_id,
-                        Application.in_working == False,
-                    ))
+                    select(Application).filter(
+                        Application.id == application_id
+                    )
                 )
                 application = result.scalars().first()
 
@@ -197,22 +199,18 @@ def load_handlers(dp, bot: Bot):
 
     @router.message(States.finish_price, UserFilter())
     async def read_finish_price(message: types.Message, state: FSMContext):
+        from applications import get_application_by_user
         try:
             await add_state_id(
                 state=state,
                 message_id=message.message_id
             )
+            dt = {'app_id': -1}
             async with AsyncSessionLocal() as session:
                 async with session.begin():
                     price = int(message.text)
 
-                    result = await session.execute(
-                        select(Application).filter(and_(
-                            Application.working_user_id == message.from_user.id,
-                            Application.in_working == True,
-                        ))
-                    )
-                    application = result.scalars().first()
+                    application, work = await get_application_by_user(session, message.from_user.id)
 
                     result = await session.execute(
                         select(User).filter(
@@ -220,24 +218,49 @@ def load_handlers(dp, bot: Bot):
                     )
                     user = result.scalars().first()
 
+                    data = await state.get_data()
+                    ids = data.get("ids", [])
+
+                    if len(ids) >= 2:
+                        try:
+                            await bot.delete_message(
+                                chat_id=message.chat.id,
+                                message_id=ids[1]
+                            )
+                        except Exception as e:
+                            print(e)
+
                     if application.pay_type == "percent":
                         p = application.com_value
                         to_pay = round((p / 100) * price, 2)
-                        result = await session.execute(
-                            select(Requisites)
-                        )
-                        requisites = result.scalars().first()
-                        text = (f"Вы выбрали оплату в процентах от стоимости заказа,\nк оплате <b>{to_pay} руб.</b"
-                                f">\nНомер карты - <b>{requisites.card_number}</b>\nНажмите на кнопку после того как "
-                                f"перевели нужную сумму\nВ сообщении к переводу <b>обязательно</b> укажите код: <b>"
-                                f"{user.telegram_user_id}</b>"),
-                        await send_state_message(
+
+                        m = await send_state_message(
                             state=state,
                             message=message,
+                            text="Загрузка...",
+                            parse_mode=ParseMode.HTML,
+                        )
+
+                        link = await create_payment_link(
+                            amount=to_pay,
+                            phone=user.phone,
+                            application_id=application.id,
+                            telegram_user_id=user.telegram_user_id,
+                            telegram_message_id=m.message_id,
+                            type_payment="percent",
+                            type_action="close",
+                        )
+
+                        text = (f"Вы выбрали оплату в процентах от стоимости заказа, к оплате <b>{to_pay} руб.</b>\n"
+                                f"Оплата доступна по <a href='{link}'>ссылке</a>"),
+
+                        await bot.edit_message_text(
+                            chat_id=m.chat.id,
+                            message_id=m.message_id,
                             text=text[0],
                             parse_mode=ParseMode.HTML,
-                            keyboard=kb.create_paid_comm_keyboard(),
                         )
+
                         await state.update_data(finish_price=price)
                         return
 
@@ -245,6 +268,10 @@ def load_handlers(dp, bot: Bot):
                     application.income += application.com_value
                     application.in_working = False
                     user.in_working = False
+
+                    dt['app_id'] = int(application.id)
+
+                    await session.delete(work)
 
                     await delete_message_ids(
                         session=session,
@@ -254,7 +281,7 @@ def load_handlers(dp, bot: Bot):
 
                 await session.commit()
 
-            await load_photos(message.from_user.id)
+            await load_photos(message.from_user.id, dt['app_id'])
 
             await send_state_message(
                 state=state,
@@ -286,75 +313,20 @@ def load_handlers(dp, bot: Bot):
             await state.set_state(States.finish_price)
             print(e)
 
-    @router.callback_query(F.data == callbacks.PAID_COMM_CALLBACK, UserFilter())
-    async def paid_commission(callback_query: types.CallbackQuery, state: FSMContext):
-        from applications import show_confirmation_for_admins
-        try:
-            async with AsyncSessionLocal() as session:
-                async with session.begin():
-                    result = await session.execute(
-                        select(User).filter(
-                            User.telegram_user_id == callback_query.from_user.id)
-                    )
-                    user = result.scalars().first()
-
-                    result = await session.execute(
-                        select(Application).filter(and_(
-                            Application.working_user_id == callback_query.message.chat.id,
-                            Application.in_working == True,
-                        ))
-                    )
-                    application = result.scalars().first()
-
-                    data = await state.get_data()
-                    price = data.get("finish_price")
-                    ids = data.get("ids", [])
-
-                    if len(ids) >= 2:
-                        try:
-                            await bot.delete_message(
-                                chat_id=callback_query.message.chat.id,
-                                message_id=ids[1]
-                            )
-                        except Exception as e:
-                            print(e)
-
-                    p = application.com_value
-                    to_pay = round((p / 100) * int(price), 2)
-                    confirmation = Confirmation(
-                        telegram_user_id=user.telegram_user_id,
-                        telegram_message_id=callback_query.message.message_id,
-                        amount=int(to_pay),
-                        created=round(time.time() * 1000),
-                        type="close",
-                    )
-                    session.add(confirmation)
-                    await session.flush()
-
-                    text = ("<b>НЕ УДАЛЯЙТЕ ЭТО СООБЩЕНИЕ</b>\nВы сможете закрыть заявку как только администратор "
-                            "подтвердит перевод")
-
-                    await bot.edit_message_text(
-                        chat_id=callback_query.message.chat.id,
-                        message_id=callback_query.message.message_id,
-                        text=text,
-                        parse_mode=ParseMode.HTML,
-                    )
-
-                    await show_confirmation_for_admins(
-                        session=session,
-                        confirmation=confirmation,
-                        author_user=user,
-                        bot=bot
-                    )
-
-                await session.commit()
-        except Exception as e:
-            print(e)
-
     @router.callback_query(F.data == callbacks.CLOSE_APPLICATION_CALLBACK, UserFilter())
     async def close_application_callback(callback_query: types.CallbackQuery, state: FSMContext):
+        from applications import get_application_by_user
         try:
+            dt = {'app_id': -1}
+            media = media_groups[callback_query.from_user.id]
+
+            if len(media) == 0:
+                await send_state_message(
+                    state=state,
+                    message=callback_query.message,
+                    text="Ошибка - изображения не найдены. Сотрите чат, запустите /reload и повторите "
+                         "процедуру завершения заявки"
+                )
             async with AsyncSessionLocal() as session:
                 async with session.begin():
                     result = await session.execute(
@@ -363,13 +335,7 @@ def load_handlers(dp, bot: Bot):
                     )
                     user = result.scalars().first()
 
-                    result = await session.execute(
-                        select(Application).filter(and_(
-                            Application.working_user_id == callback_query.message.chat.id,
-                            Application.in_working == True,
-                        ))
-                    )
-                    application = result.scalars().first()
+                    application, work = await get_application_by_user(session, callback_query.message.chat.id)
 
                     data = await state.get_data()
                     price = data.get("finish_price")
@@ -382,9 +348,21 @@ def load_handlers(dp, bot: Bot):
                     application.income += to_pay
                     user.in_working = False
 
+                    dt['app_id'] = int(application.id)
+
+                    await session.delete(work)
+
                 await session.commit()
 
-            await load_photos(callback_query.from_user.id)
+            await load_photos(callback_query.from_user.id, dt['app_id'])
+
+            try:
+                await bot.delete_message(
+                    chat_id=user.telegram_chat_id,
+                    message_id=callback_query.message.id
+                )
+            except Exception as e:
+                pass
 
             await send_state_message(
                 state=state,

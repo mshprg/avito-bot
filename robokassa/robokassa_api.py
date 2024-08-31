@@ -10,16 +10,13 @@ def calculate_signature(*args) -> str:
     return hashlib.md5(':'.join(str(arg) for arg in args).encode()).hexdigest()
 
 
-def parse_response(request: str) -> dict:
+async def parse_response(request) -> dict:
     """
     :param request: Link.
     :return: Dictionary.
     """
-    params = {}
-
-    for item in urlparse(request).query.split('&'):
-        key, value = item.split('=')
-        params[key] = value
+    data = await request.post()
+    params = dict(data)
     return params
 
 
@@ -68,11 +65,11 @@ def generate_payment_link(
 
 # Получение уведомления об исполнении операции (ResultURL).
 
-def result_payment(merchant_password_2: str, request: str) -> str:
+async def result_payment(merchant_password_2: str, request) -> str:
     """Verification of notification (ResultURL).
     :param request: HTTP parameters.
     """
-    param_request = parse_response(request)
+    param_request = await parse_response(request)
     cost = param_request['OutSum']
     number = param_request['InvId']
     signature = param_request['SignatureValue']
@@ -85,11 +82,11 @@ def result_payment(merchant_password_2: str, request: str) -> str:
 
 # Проверка параметров в скрипте завершения операции (SuccessURL).
 
-def check_success_payment(merchant_password_1: str, request: str) -> str:
+async def check_success_payment(merchant_password_1: str, request) -> str:
     """ Verification of operation parameters ("cashier check") in SuccessURL script.
     :param request: HTTP parameters
     """
-    param_request = parse_response(request)
+    param_request = await parse_response(request)
     cost = param_request['OutSum']
     number = param_request['InvId']
     signature = param_request['SignatureValue']

@@ -12,14 +12,15 @@ from sqlalchemy import select
 
 from models.user import User
 from scenarios import handlers, handlers_admin
-from scenarios.admin import ban_users, generate_report, manage_admins, manage_cities, manage_commission,\
-                             manage_confirmations, manage_items, manage_questions_improvements, manage_requisites,\
-                            manage_users
-from scenarios.user import create_feedback, finish_application, open_application, registration, stop_application,\
-                            user_improvements_questions, show_educational_videos
+from scenarios.admin import ban_users, generate_report, manage_admins, manage_cities, manage_commission, \
+    manage_payments, manage_items, manage_questions_improvements, manage_requisites, \
+    manage_users
+from scenarios.user import create_feedback, finish_application, open_application, registration, stop_application, \
+    user_improvements_questions, show_educational_videos
 from db import init_db, AsyncSessionLocal
 import config
 import avito
+from robokassa import payment
 from models.city import City
 from models.comission import Commission
 from models.requisites import Requisites
@@ -56,7 +57,7 @@ async def start_bot():
     manage_admins.load_handlers(dp, bot)
     manage_cities.load_handlers(dp, bot)
     manage_commission.load_handlers(dp, bot)
-    manage_confirmations.load_handlers(dp, bot)
+    manage_payments.load_handlers(dp, bot)
     manage_items.load_handlers(dp, bot)
     manage_questions_improvements.load_handlers(dp, bot)
     manage_requisites.load_handlers(dp, bot)
@@ -140,9 +141,10 @@ async def main():
     schedule_jobs()
 
     await asyncio.gather(
-        avito.start_avito_webhook(avito.handle_webhook_message),
+        avito.start_avito_webhook(avito.handle_webhook_message, payment.check_status_payment),
         start_bot()
     )
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

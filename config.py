@@ -10,6 +10,9 @@ ROOT_USER_IDS = eval(os.environ.get('ROOT_USER_ID'))
 AVITO_CLIENT_ID = os.environ.get('AVITO_CLIENT_ID')
 AVITO_CLIENT_SECRET = os.environ.get('AVITO_CLIENT_SECRET')
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
+MERCHANT_LOGIN = os.environ.get('MERCHANT_LOGIN')
+MERCHANT_PASSWORD_1 = os.environ.get('MERCHANT_PASSWORD_1')
+MERCHANT_PASSWORD_2 = os.environ.get('MERCHANT_PASSWORD_2')
 
 # Webhook settings
 WEBHOOK_HOST = os.environ.get('WEBHOOK_HOST')  # ngrok URL или ваш сервер
@@ -21,6 +24,7 @@ WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 # https://517e-185-145-125-177.ngrok-free.app
 # https://a875-185-145-125-177.ngrok-free.app
 # https://bc36-2a00-1370-818c-206b-c78-b176-6eaa-652b.ngrok-free.app
+ROBOKASSA_PATH = '/result-payment/'
 
 # Web server settings
 WEBAPP_HOST = '0.0.0.0'

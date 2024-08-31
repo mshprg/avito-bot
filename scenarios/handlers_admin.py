@@ -7,8 +7,6 @@ import callbacks
 from db import AsyncSessionLocal
 from message_processing import delete_state_messages, add_state_id, reset_state
 from models.addiction import Addiction
-from models.application import Application
-from models.confirmation import Confirmation
 from models.user import User
 from states import States
 
@@ -21,14 +19,6 @@ def load_handlers_admin(dp, bot: Bot):
         try:
             async with AsyncSessionLocal() as session:
                 async with session.begin():
-                    result = await session.execute(
-                        select(Confirmation).filter(Confirmation.telegram_user_id == message.from_user.id)
-                    )
-                    confirmation = result.scalars().first()
-
-                    if confirmation is not None:
-                        return
-
                     await reset_state(state)
 
                     result = await session.execute(
@@ -56,7 +46,7 @@ def load_handlers_admin(dp, bot: Bot):
     @router.message(Command('reload'), StateFilter(None, States.message))
     async def reload(message: types.Message, state: FSMContext):
         from message_processing import delete_message_ids
-        from applications import show_applications, show_messages_for_application
+        from applications import show_applications, show_messages_for_application, get_application_by_user
         try:
             await add_state_id(
                 state=state,
@@ -64,14 +54,6 @@ def load_handlers_admin(dp, bot: Bot):
             )
             async with AsyncSessionLocal() as session:
                 async with session.begin():
-                    result = await session.execute(
-                        select(Confirmation).filter(Confirmation.telegram_user_id == message.from_user.id)
-                    )
-                    confirmation = result.scalars().first()
-
-                    if confirmation is not None:
-                        return
-
                     await delete_state_messages(
                         state=state,
                         bot=bot,
@@ -93,11 +75,6 @@ def load_handlers_admin(dp, bot: Bot):
                         return
 
                     result = await session.execute(
-                        select(Application).filter(Application.working_user_id == user.telegram_user_id)
-                    )
-                    application = result.scalars().first()
-
-                    result = await session.execute(
                         select(Addiction).filter(
                             Addiction.telegram_chat_id == message.chat.id)
                     )
@@ -114,6 +91,8 @@ def load_handlers_admin(dp, bot: Bot):
                         await session.delete(ad)
 
                     if user.in_working:
+                        application, _ = await get_application_by_user(session, message.from_user.id)
+
                         in_working = True
                         u = {'telegram_chat_id': user.telegram_chat_id}
                         a = {
@@ -125,7 +104,9 @@ def load_handlers_admin(dp, bot: Bot):
                     else:
                         in_working = False
 
+            data = await state.get_data()
             await state.clear()
+            await state.update_data(pay_type=data.get("pay_type", None))
 
             if in_working:
                 await show_messages_for_application(
@@ -151,7 +132,7 @@ def load_handlers_admin(dp, bot: Bot):
     @router.callback_query(F.data == callbacks.DELETE_MESSAGES_CALLBACK)
     async def delete_messages(callback_query: types.CallbackQuery, state: FSMContext):
         state_ids = ["admin_ids", "commission_ids", "requisites_ids", "cities_ids", "make_admin_ids", "report_ids",
-                     "location_ids", "feedback_ids", "feedback_admin_ids", "confirmation_admin_ids", "ban_ids",
+                     "location_ids", "feedback_ids", "feedback_admin_ids", "payments_admin_ids", "ban_ids",
                      "user_ids", "video_ids"]
         try:
             for state_name in state_ids:

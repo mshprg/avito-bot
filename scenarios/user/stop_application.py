@@ -10,8 +10,8 @@ import kb
 from db import AsyncSessionLocal
 from filters import UserFilter
 from message_processing import send_state_message, delete_state_messages, delete_message_ids, add_state_id
-from models.application import Application
 from models.mask import Mask
+from models.payment import Payment
 from models.user import User
 from states import States
 
@@ -37,6 +37,7 @@ def load_handlers(dp, bot: Bot):
 
     @router.callback_query(F.data == callbacks.EXACTLY_STOP_CALLBACK, UserFilter())
     async def exactly_stop_application(callback_query: types.CallbackQuery, state: FSMContext):
+        from applications import get_application_by_user
         try:
             async with AsyncSessionLocal() as session:
                 async with session.begin():
@@ -47,17 +48,15 @@ def load_handlers(dp, bot: Bot):
                     user = result.scalars().first()
 
                     result = await session.execute(
-                        select(User).filter(User.in_working == False)
+                        select(User).filter(and_(
+                            User.in_working == False,
+                            User.banned == False,
+                            User.in_waiting == False,
+                        ))
                     )
                     other_users = result.scalars().all()
 
-                    result = await session.execute(
-                        select(Application).filter(and_(
-                            Application.working_user_id == callback_query.message.chat.id,
-                            Application.in_working == True,
-                        ))
-                    )
-                    application = result.scalars().first()
+                    application, work = await get_application_by_user(session, user.telegram_user_id)
 
                     if application.pay_type == "fixed":
                         await send_state_message(
@@ -80,6 +79,8 @@ def load_handlers(dp, bot: Bot):
                     application.pay_type = "None"
                     application.com_value = 0
                     user.in_working = False
+
+                    await session.delete(work)
 
                     for u in other_users:
                         if u.telegram_chat_id != callback_query.message.chat.id:
@@ -118,6 +119,7 @@ def load_handlers(dp, bot: Bot):
 
     @router.message(States.user_card_number, UserFilter())
     async def read_user_card_number(message: types.Message, state: FSMContext):
+        from applications import get_application_by_user
         try:
             await add_state_id(
                 state=state,
@@ -135,17 +137,26 @@ def load_handlers(dp, bot: Bot):
                     user = result.scalars().first()
 
                     result = await session.execute(
-                        select(User).filter(User.in_working == False)
+                        select(User).filter(and_(
+                            User.in_working == False,
+                            User.banned == False,
+                            User.in_waiting == False,
+                        ))
                     )
                     other_users = result.scalars().all()
 
+                    application, work = await get_application_by_user(session, user.telegram_user_id)
+
                     result = await session.execute(
-                        select(Application).filter(and_(
-                            Application.working_user_id == message.chat.id,
-                            Application.in_working == True,
+                        select(Payment).filter(and_(
+                            Payment.telegram_user_id == user.telegram_user_id,
+                            Payment.application_id == application.id,
+                            Payment.action == "open",
                         ))
                     )
-                    application = result.scalars().first()
+                    payment = result.scalars().first()
+
+                    payment.status = 3
 
                     result = await session.execute(
                         select(User).filter(User.admin == True)
@@ -179,6 +190,8 @@ def load_handlers(dp, bot: Bot):
                     application.income += round(application.com_value / 2, 2)
                     application.com_value = 0
                     user.in_working = False
+
+                    await session.delete(work)
 
                     for u in other_users:
                         if u.telegram_chat_id != message.chat.id:
