@@ -166,4 +166,12 @@ def load_handlers_admin(dp, bot: Bot):
         except Exception as e:
             print(e)
 
+    @router.message(Command('file'), StateFilter("*"))
+    async def read_file(message: types.Message, state: FSMContext):
+        await state.set_state(States.video_test)
+
+    @router.message(States.video_test)
+    async def print_file(message: types.Message):
+        print(message.video)
+
     dp.include_router(router)
