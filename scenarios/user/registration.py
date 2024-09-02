@@ -52,6 +52,20 @@ def load_handlers(dp, bot: Bot):
                         f"обработки персональных данных</a> и <a href='{agreement_url}'>Пользовательским "
                         f"соглашением</a>")
 
+                    media = [
+                        InputMediaVideo(
+                            media="BAACAgIAAxkBAAJA-mbWIw-8YGxgvsNOPha5JfdhwZ5sAAIeXQACIQ6xSlSHuUJ2GE_uNQQ",
+                            caption="Перед регистрацией ознакомьтесь с видео",
+                        )
+                    ]
+
+                    await send_state_media(
+                        state=state,
+                        chat_id=message.chat.id,
+                        media=media,
+                        bot=bot
+                    )
+
                     await send_state_message(
                         state=state,
                         message=message,
@@ -208,7 +222,7 @@ def load_handlers(dp, bot: Bot):
             await send_state_message(
                 state=state,
                 message=message,
-                text="Ознакомительные видео:\n",
+                text="Видео работы бота:\n",
                 keyboard=types.ReplyKeyboardRemove()
             )
 
