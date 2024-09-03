@@ -82,6 +82,14 @@ def create_price_keyboard(percent, fixed):
     ])
 
 
+def create_back_to_apps_keyboard():
+    return generate_inline_markup([['Отказаться от заявки', callbacks.BACK_TO_APPS_CALLBACK]])
+
+
+def create_exactly_back_keyboard():
+    return generate_inline_markup([['Я точно хочу отказаться', callbacks.EXACTLY_BACK_CALLBACK]])
+
+
 def create_paid_fixed_callback():
     return generate_inline_markup([['Я оплатил', callbacks.PAID_FIXED_CALLBACK]])
 

@@ -4,6 +4,8 @@ SHOW_APPLICATIONS_CALLBACK = "show_applications_callback"
 
 SET_APPLICATION_CALLBACK = "select_application_callback"
 SELECT_FIXED_CALLBACK = "select_fixed_callback"
+BACK_TO_APPS_CALLBACK = "BACK_TO_APPS_CALLBACK"
+EXACTLY_BACK_CALLBACK = "EXACTLY_BACK_CALLBACK"
 
 TAKE_APPLICATION_CALLBACK = "take_application_callback"
 

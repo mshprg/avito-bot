@@ -1,3 +1,5 @@
+from time import sleep
+
 from aiogram import Router, Bot, types, F
 from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
@@ -58,7 +60,7 @@ def load_handlers(dp, bot: Bot):
 
                     text = (
                         "*Выберите способ оплаты комиссии:*\n_Фиксированная комиссия_ \- платите сразу\n_Процент от "
-                        "стоимости_ \- платите процент от стоимости заказа\n*После выбора действие отменить не получится*")
+                        "стоимости_ \- платите процент от стоимости заказа")
 
                     await bot.edit_message_text(
                         text=text,
@@ -144,6 +146,7 @@ def load_handlers(dp, bot: Bot):
                         chat_id=callback_query.message.chat.id,
                         message_id=callback_query.message.message_id,
                         parse_mode=ParseMode.HTML,
+                        reply_markup=kb.create_back_to_apps_keyboard()
                     )
 
                     user.in_waiting = True
@@ -152,6 +155,107 @@ def load_handlers(dp, bot: Bot):
                     await state.update_data(pay_type="fixed")
 
                 await session.commit()
+
+        except Exception as e:
+            print(e)
+
+    @router.callback_query(F.data == callbacks.BACK_TO_APPS_CALLBACK)
+    async def back_to_applications(callback_query: types.CallbackQuery):
+        try:
+            sleep(3)
+            text = "Вы уверены что хотите отказаться от заявки?"
+            await bot.edit_message_text(
+                text=text,
+                chat_id=callback_query.message.chat.id,
+                message_id=callback_query.message.message_id,
+                reply_markup=kb.create_exactly_back_keyboard()
+            )
+        except Exception as e:
+            print(e)
+
+    @router.callback_query(F.data == callbacks.EXACTLY_BACK_CALLBACK)
+    async def exactly_back_to_applications(callback_query: types.CallbackQuery):
+        from applications import show_application, show_applications
+        try:
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Payment).filter(and_(
+                            Payment.telegram_message_id == callback_query.message.message_id,
+                            Payment.telegram_user_id == callback_query.message.chat.id
+                        ))
+                    )
+                    payment = result.scalars().first()
+
+                    result = await session.execute(
+                        select(User).filter(User.telegram_user_id == callback_query.message.chat.id)
+                    )
+                    user = result.scalars().first()
+
+                    if user is None:
+                        return
+
+                    user.in_waiting = False
+
+                    result = await session.execute(
+                        select(Addiction).filter(
+                            Addiction.telegram_message_id == callback_query.message.message_id)
+                    )
+                    addiction = result.scalars().first()
+
+                    result = await session.execute(
+                        select(Application).filter(
+                            Application.id == addiction.application_id)
+                    )
+                    application = result.scalars().first()
+
+                    if application:
+                        application.waiting_confirmation = False
+
+                    if payment is None and application:
+                        result = await session.execute(
+                            select(Payment).filter(and_(
+                                Payment.application_id == application.id,
+                                Payment.telegram_user_id == callback_query.message.chat.id
+                            ))
+                        )
+                        payment = result.scalars().first()
+
+                    if payment:
+                        await session.delete(payment)
+
+                    result = await session.execute(
+                        select(User).filter(and_(
+                            User.in_working == False,
+                            User.banned == False,
+                            User.in_waiting == False,
+                        ))
+                    )
+                    other_users = result.scalars().all()
+
+                    for u in other_users:
+                        if u.telegram_chat_id != callback_query.message.chat.id:
+                            await show_application(
+                                session=session,
+                                application=application,
+                                bot=bot,
+                                chat_id=u.telegram_chat_id,
+                                user_city=u.city,
+                                is_admin=u.admin
+                            )
+
+                await session.commit()
+
+            await bot.delete_message(
+                chat_id=callback_query.message.chat.id,
+                message_id=callback_query.message.message_id
+            )
+
+            await show_applications(
+                chat_id=callback_query.message.chat.id,
+                user_id=callback_query.from_user.id,
+                bot=bot
+            )
 
         except Exception as e:
             print(e)
