@@ -182,3 +182,10 @@ def create_list_confirmations_keyboard():
     return generate_inline_markup([
         ['Отправить сообщение с действиями', callbacks.APPROVED_CONF_CALLBACK],
     ])
+
+
+def create_select_sending_keyboard():
+    return generate_inline_markup([
+        ['Отправить сообщение всем пользователям', callbacks.SEND_MESSAGE_ALL_CALLBACK],
+        ['Выбрать локацию', callbacks.SELECT_SENDING_CITY_CALLBACK],
+    ])

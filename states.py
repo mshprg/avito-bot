@@ -26,6 +26,8 @@ class States(StatesGroup):
     visible_payments = State()
     ban = State()
     unban = State()
+    sending_text = State()
+    sending_locations = State()
 
     ids = State()
     admin_ids = State()
@@ -39,6 +41,7 @@ class States(StatesGroup):
     payments_admin_ids = State()
     ban_ids = State()
     user_ids = State()
+    sending_ids = State()
 
     feedback_ids = State()
     video_ids = State()
