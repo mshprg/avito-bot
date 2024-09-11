@@ -13,6 +13,8 @@ BUCKET_NAME = os.environ.get('BUCKET_NAME')
 MERCHANT_LOGIN = os.environ.get('MERCHANT_LOGIN')
 MERCHANT_PASSWORD_1 = os.environ.get('MERCHANT_PASSWORD_1')
 MERCHANT_PASSWORD_2 = os.environ.get('MERCHANT_PASSWORD_2')
+SMSAERO_EMAIL = os.environ.get('SMSAERO_EMAIL')
+SMSAERO_API_KEY = os.environ.get('SMSAERO_API_KEY')
 
 # Webhook settings
 WEBHOOK_HOST = os.environ.get('WEBHOOK_HOST')  # ngrok URL или ваш сервер

@@ -1,11 +1,14 @@
+import random
 import re
+import time
 
 from aiogram import Router, Bot, types, F
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InputMediaVideo
-from sqlalchemy import select
+from smsaero import SmsAero
+from sqlalchemy import select, and_
 
 import callbacks
 import config
@@ -13,6 +16,7 @@ import kb
 from db import AsyncSessionLocal
 from message_processing import delete_state_messages, send_state_message, add_state_id, send_state_media
 from models.city import City
+from models.code import Code
 from models.user import User
 from states import States
 
@@ -124,7 +128,9 @@ def load_handlers(dp, bot: Bot):
             await send_state_message(
                 state=state,
                 message=message,
-                text="Введите ваш номер телефона в формате:\n+7XXXXXXXXXX\nПример: +71234567890"
+                text="Введите ваш номер телефона в формате:\n+7XXXXXXXXXX\nПример: +71234567890\n<b>Мы пришлем код на "
+                     "этот номер</b>",
+                parse_mode=ParseMode.HTML,
             )
             await state.set_state(States.phone)
         except Exception as e:
@@ -164,12 +170,140 @@ def load_handlers(dp, bot: Bot):
                         return
 
                     result = await session.execute(
+                        select(Code).filter(and_(
+                            Code.telegram_user_id == message.from_user.id,
+                            Code.code_type == "phone"
+                        ))
+                    )
+                    code_db = result.scalars().first()
+
+                    if code_db:
+                        await session.delete(code_db)
+
+                    random_code = random.randint(100000, 999999)
+
+                    sms_text = f'Код регистрации для "Заявка легко": {random_code}'
+
+                    api = SmsAero(config.SMSAERO_EMAIL, config.SMSAERO_API_KEY)
+                    try:
+                        ...
+                        # await api.send_sms(int(phone.replace("+", "")), sms_text)
+                    except:
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text="Мы не можем отправить код на данный номер телефона, введите друой номер",
+                        )
+                        await state.set_state(States.phone)
+                        await session.close()
+                        return
+
+                    code = Code(
+                        telegram_user_id=message.from_user.id,
+                        code=random_code,
+                        created=int(time.time() * 1000),
+                        code_type="phone"
+                    )
+
+                    session.add(code)
+
+                    await state.update_data(phone=phone)
+
+                    await send_state_message(
+                        state=state,
+                        message=message,
+                        text="На номер телефона был отпрален код подтверждения, введите код",
+                        keyboard=kb.create_repeat_phone_keyboard()
+                    )
+
+                    await state.set_state(States.phone_code)
+
+            await session.commit()
+        except Exception as e:
+            print(e)
+
+    @router.callback_query(F.data == callbacks.REPEAT_PHONE_CALLBACK)
+    async def repeat_phone(callback_query: types.CallbackQuery, state: FSMContext):
+        try:
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Code).filter(and_(
+                            Code.telegram_user_id == callback_query.message.chat.id,
+                            Code.code_type == "phone"
+                        ))
+                    )
+                    code_db = result.scalars().first()
+
+                    if code_db:
+                        code_created = code_db.created
+
+                        time_now = int(time.time() * 1000)
+
+                        time_diff = time_now - code_created
+                        time_delay = 60
+
+                        if time_diff < time_delay * 1000:
+                            await send_state_message(
+                                state=state,
+                                message=callback_query.message,
+                                text=f"Мы отправили вам код менее 1 минуты назад, подождите ещё "
+                                     f"{time_delay - int(time_diff / 1000)} сек. и повторите попытку",
+                            )
+                            await session.close()
+                            return
+
+            await send_state_message(
+                state=state,
+                message=callback_query.message,
+                text="Введите ваш номер телефона в формате:\n+7XXXXXXXXXX\nПример: +71234567890\n<b>Мы пришлем код на "
+                     "этот номер</b>",
+                parse_mode=ParseMode.HTML,
+            )
+            try:
+                await bot.delete_message(
+                    chat_id=callback_query.message.chat.id,
+                    message_id=callback_query.message.message_id,
+                )
+            except:
+                pass
+            await state.set_state(States.phone)
+        except Exception as e:
+            print(e)
+
+    @router.message(States.phone_code)
+    async def read_code(message: types.Message, state: FSMContext):
+        try:
+            code = message.text
+            await add_state_id(state, message.message_id)
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Code).filter(and_(
+                            Code.telegram_user_id == message.chat.id,
+                            Code.code_type == "phone"
+                        ))
+                    )
+                    code_db = result.scalars().first()
+
+                    if str(code_db.code) != code:
+                        await send_state_message(
+                            state=state,
+                            message=message,
+                            text="Неверный код, повторите ввод или используйте другой номер телефона",
+                            keyboard=kb.create_repeat_phone_keyboard()
+                        )
+                        await state.set_state(States.phone_code)
+                        return
+
+                    await session.delete(code_db)
+
+                    result = await session.execute(
                         select(City)
                     )
                     cities_db = result.scalars().all()
                     cities = [city.city for city in cities_db]
 
-                    await state.update_data(phone=phone)
                     await send_state_message(
                         state=state,
                         message=message,
@@ -236,7 +370,7 @@ def load_handlers(dp, bot: Bot):
             await send_state_message(
                 state=state,
                 message=message,
-                text="<b>Видео помогут ознакомиться с работой бота</b>",
+                text="<b>Действия</b>",
                 parse_mode=ParseMode.HTML,
                 keyboard=kb.create_show_applications_keyboard()
             )

@@ -1,11 +1,13 @@
 POLICY_ACCEPT_CALLBACK = "policy_accept_callback"
 
+REPEAT_PHONE_CALLBACK = "repeat_phone_callback"
+
 SHOW_APPLICATIONS_CALLBACK = "show_applications_callback"
 
 SET_APPLICATION_CALLBACK = "select_application_callback"
 SELECT_FIXED_CALLBACK = "select_fixed_callback"
-BACK_TO_APPS_CALLBACK = "BACK_TO_APPS_CALLBACK"
-EXACTLY_BACK_CALLBACK = "EXACTLY_BACK_CALLBACK"
+BACK_TO_APPS_CALLBACK = "back_to_apps_callback"
+EXACTLY_BACK_CALLBACK = "exactly_back_callback"
 
 TAKE_APPLICATION_CALLBACK = "take_application_callback"
 
@@ -51,5 +53,5 @@ PAID_FIXED_CALLBACK = "paid_fixed_callback"
 DELETE_CONF_CALLBACK = "delete_conf_callback"
 APPROVED_CONF_CALLBACK = "approved_conf_callback"
 
-SEND_MESSAGE_ALL_CALLBACK = "SEND_MESSAGE_ALL_CALLBACK"
-SELECT_SENDING_CITY_CALLBACK = "SELECT_SENDING_CITY_CALLBACK"
+SEND_MESSAGE_ALL_CALLBACK = "send_message_all_callback"
+SELECT_SENDING_CITY_CALLBACK = "select_sending_city_callback"

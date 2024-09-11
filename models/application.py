@@ -24,4 +24,3 @@ class Application(Base):
     income: float = Column(Float, nullable=False, default=0)
     com_value: float = Column(Float, nullable=False, default=0)
     price: float = Column(Float, nullable=False, default=0)
-    waiting_confirmation: bool = Column(Boolean, nullable=False, default=False)

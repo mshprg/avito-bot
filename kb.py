@@ -32,6 +32,12 @@ def create_feedback_keyboard():
     return ReplyKeyboardMarkup(keyboard=[[button_1], [button_2]])
 
 
+def create_repeat_phone_keyboard():
+    return generate_inline_markup([
+        ['Повторить ввод номера', callbacks.REPEAT_PHONE_CALLBACK]
+    ])
+
+
 def create_policy_accept_callback():
     return generate_inline_markup([
         ['Далее', callbacks.POLICY_ACCEPT_CALLBACK]

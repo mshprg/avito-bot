@@ -14,7 +14,7 @@ from models.user import User
 from scenarios import handlers, handlers_admin
 from scenarios.admin import ban_users, generate_report, manage_admins, manage_cities, manage_commission, \
     manage_payments, manage_items, manage_questions_improvements, manage_requisites, \
-    manage_users
+    manage_users, sending
 from scenarios.user import create_feedback, finish_application, open_application, registration, stop_application, \
     user_improvements_questions, show_educational_videos
 from db import init_db, AsyncSessionLocal
@@ -62,6 +62,7 @@ async def start_bot():
     manage_questions_improvements.load_handlers(dp, bot)
     manage_requisites.load_handlers(dp, bot)
     manage_users.load_handlers(dp, bot)
+    sending.load_handlers(dp, bot)
 
     create_feedback.load_handlers(dp, bot)
     show_educational_videos.load_handlers(dp, bot)

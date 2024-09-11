@@ -6,6 +6,7 @@ class States(StatesGroup):
     phone = State()
     name = State()
     city = State()
+    phone_code = State()
     message = State()
     avito_info = State()
     pay_type = State()
