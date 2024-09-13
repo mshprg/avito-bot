@@ -7,6 +7,6 @@ class Subscription(Base):
     id: int = Column(Integer, primary_key=True)
     telegram_user_id: int = Column(BigInteger, nullable=False)
     price: int = Column(Integer, nullable=False)
-    # 0 - work, 1 - frozen, 2 - empty
+    # 0 - work, 1 - frozen, 2 - empty, 3 - trial
     status: int = Column(Integer, nullable=False)
     end_time: int = Column(BigInteger, nullable=False)

@@ -17,6 +17,7 @@ from db import AsyncSessionLocal
 from message_processing import delete_state_messages, send_state_message, add_state_id, send_state_media
 from models.city import City
 from models.code import Code
+from models.subscription import Subscription
 from models.user import User
 from states import States
 
@@ -367,10 +368,13 @@ def load_handlers(dp, bot: Bot):
                 bot=bot
             )
 
+            text = ("У вас активрован пробный период работы: 3 дня. После истечения этого срока потребуется приобрести "
+                    "доступ")
+
             await send_state_message(
                 state=state,
                 message=message,
-                text="<b>Действия</b>",
+                text=text,
                 parse_mode=ParseMode.HTML,
                 keyboard=kb.create_show_applications_keyboard()
             )
@@ -395,10 +399,23 @@ def load_handlers(dp, bot: Bot):
                     telegram_user_id=callback_query.message.chat.id,
                     telegram_chat_id=callback_query.message.chat.id,
                     admin=admin,
-                    in_working=False
+                    in_working=False,
+                    is_subscribed=True,
                 )
 
+                end_time = int(time.time() * 1000) + 86400000 * 3
+
+                subscription = Subscription(
+                    telegram_user_id=callback_query.message.chat.id,
+                    price=0,
+                    status=3,
+                    end_time=end_time,
+                )
+
+                session.add(subscription)
                 session.add(user)
+
+            await session.commit()
 
         await delete_state_messages(
             state=state,

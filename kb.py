@@ -29,7 +29,8 @@ def create_cities_keyboard(cities):
 def create_feedback_keyboard():
     button_1 = KeyboardButton(text="Обратная связь")
     button_2 = KeyboardButton(text="Обучающие видео")
-    return ReplyKeyboardMarkup(keyboard=[[button_1], [button_2]])
+    button_3 = KeyboardButton(text="Купить подписку")
+    return ReplyKeyboardMarkup(keyboard=[[button_1], [button_2], [button_3]])
 
 
 def create_repeat_phone_keyboard():

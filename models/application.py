@@ -20,7 +20,5 @@ class Application(Base):
     last_message_time: int = Column(BigInteger, nullable=False)
     last_message_text: str = Column(String, nullable=False)
     username: str = Column(String, nullable=False)
-    pay_type: str = Column(String, nullable=True)
     income: float = Column(Float, nullable=False, default=0)
-    com_value: float = Column(Float, nullable=False, default=0)
     price: float = Column(Float, nullable=False, default=0)

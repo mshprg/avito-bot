@@ -18,15 +18,14 @@ from models.user import User
 from models.work import Work
 
 
-async def show_application(session, is_admin, application, user_city, bot: Bot, chat_id):
+async def show_application(session, application, user_city, bot: Bot, chat_id):
     try:
         location = application.item_location.split(', ')
         if user_city not in location:
             return
-        if is_admin:
-            keyboard = kb.create_application_admin_keyboard()
-        else:
-            keyboard = kb.create_application_keyboard()
+
+        keyboard = kb.create_application_keyboard()
+
         if application.type == 'text':
             text = f"<b>Заявка от пользователя {application.username}:</b>\n\n{application.content}"
             m = await bot.send_message(
@@ -75,8 +74,8 @@ async def show_application(session, is_admin, application, user_city, bot: Bot, 
             session.add(addiction1)
             session.add(addiction2)
         else:
-            text = ("Вам прислал сообщение новый пользователь, к сожалению данный тип сообщения "
-                    "невозможно обработать в Telegram, но вы можете взять заявку")
+            text = (f"<b>Заявка от пользователя {application.username}:</b>\n\nДанный тип сообщения невозможно "
+                    f"обработать в Telegram, но вы можете взять заявку")
             m = await bot.send_message(
                 chat_id=chat_id,
                 text=text,
@@ -88,7 +87,8 @@ async def show_application(session, is_admin, application, user_city, bot: Bot, 
                 telegram_chat_id=m.chat.id,
             )
             session.add(addiction)
-        sleep(0.3)
+
+        sleep(0.2)
     except Exception as e:
         print(e)
 
@@ -99,8 +99,9 @@ async def show_applications(bot, user_id, chat_id):
             result = await session.execute(
                 select(User).filter(and_(
                     User.telegram_user_id == user_id,
+                    User.in_working == False,
                     User.banned == False,
-                    User.in_waiting == False,
+                    User.is_subscribed == True,
                 ))
             )
             user = result.scalars().first()
@@ -121,7 +122,6 @@ async def show_applications(bot, user_id, chat_id):
             filters = [
                 Application.in_working == False,
                 Application.working_user_id == -1,
-                Application.waiting_confirmation == False,
                 Application.item_location != "None",
             ]
 
