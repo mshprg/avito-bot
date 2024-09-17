@@ -1,3 +1,4 @@
+import time
 from time import sleep
 
 from aiogram import Router, Bot, types, F
@@ -13,6 +14,7 @@ from message_processing import send_state_message, add_state_id
 from models.application import Application
 from models.item import Item
 from models.item_addiction import ItemAddiction
+from models.subscription import Subscription
 from models.user import User
 from states import States
 
@@ -126,9 +128,18 @@ def load_handlers(dp, bot: Bot):
                         ap.item_location = locations
 
                     result = await session.execute(
-                        select(User).filter(
-                            User.in_working == False
-                        )
+                        select(Subscription).filter(Subscription.end_time > int(time.time() * 1000))
+                    )
+                    subscriptions = result.scalars().all()
+
+                    user_ids = [s.telegram_user_id for s in subscriptions]
+
+                    result = await session.execute(
+                        select(User).filter(and_(
+                            User.in_working == False,
+                            User.banned == False,
+                            User.telegram_user_id.in_(user_ids)
+                        ))
                     )
                     users = result.scalars().all()
 
@@ -156,7 +167,6 @@ def load_handlers(dp, bot: Bot):
                                 session=session,
                                 application=ap,
                                 user_city=user.city,
-                                is_admin=user.admin,
                                 bot=bot,
                                 chat_id=user.telegram_chat_id
                             )

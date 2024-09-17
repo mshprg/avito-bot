@@ -31,8 +31,7 @@ DELETE_MESSAGES_CALLBACK = "delete_admin_messages_callback"
 ADD_CITIES_CALLBACK = "add_cities_callback"
 DELETE_CITIES_CALLBACK = "delete_cities_callback"
 
-CHANGE_FIXED_CALLBACK = "change_fixed_callback"
-CHANGE_PERCENT_CALLBACK = "change_percent_callback"
+CHANGE_30_CALLBACK = "change_30_callback"
 
 CHANGE_REQUISITES_CALLBACK = "change_requisites_callback"
 
@@ -55,3 +54,6 @@ APPROVED_CONF_CALLBACK = "approved_conf_callback"
 
 SEND_MESSAGE_ALL_CALLBACK = "send_message_all_callback"
 SELECT_SENDING_CITY_CALLBACK = "select_sending_city_callback"
+
+BUY_SUBSCRIBE_CALLBACK = "buy_subscribe_callback"
+BUY_ADMIN_SUBSCRIBE_CALLBACK = "buy_admin_subscribe_callback"

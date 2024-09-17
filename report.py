@@ -86,13 +86,11 @@ async def collect_data(session, start_unix, end_unix):
         "Наименование Заказчика": [],
         "Последнее сообщение Заказчика": [],
         "Дата обращения Заказчика": [],
-        "Дата последнего сообщения": [],
-        "Заработано исполнителем": [],
-        "Заработано вами": [],
+        "Дата последнего сообщения": []
     }
 
-    names, phones, fio, usernames, last_messages, date_income, date_last_message, price, income = \
-        [], [], [], [], [], [], [], [], []
+    names, phones, fio, usernames, last_messages, date_income, date_last_message = \
+        [], [], [], [], [], [], []
 
     working_ids = [application.working_user_id for application in applications]
 
@@ -111,18 +109,11 @@ async def collect_data(session, start_unix, end_unix):
             phones.append(user.phone)
             fio.append(user.name)
 
-        if application.pay_type == "percent":
-            res_price = application.price * (100 - application.com_value) / 100
-        else:
-            res_price = application.price - application.com_value
-
         names.append(application.item_name)
         usernames.append(application.username)
         last_messages.append(application.last_message_text)
         date_income.append(to_date(application.created))
         date_last_message.append(to_date(application.last_message_time))
-        price.append(res_price)
-        income.append(application.income)
 
     data['Наименование'] = names
     data['Телефон исполнителя'] = phones
@@ -131,8 +122,6 @@ async def collect_data(session, start_unix, end_unix):
     data['Последнее сообщение Заказчика'] = last_messages
     data['Дата обращения Заказчика'] = date_income
     data['Дата последнего сообщения'] = date_last_message
-    data['Заработано исполнителем'] = price
-    data['Заработано вами'] = income
 
     df = pd.DataFrame(data)
 

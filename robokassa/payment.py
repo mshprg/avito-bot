@@ -2,8 +2,8 @@ import time
 
 from sqlalchemy import select
 
-import kb
 from models.payment import Payment
+from models.subscription import Subscription
 from robokassa.robokassa_api import result_payment, generate_payment_link
 import config
 from aiohttp import web
@@ -13,8 +13,7 @@ from db import AsyncSessionLocal
 handled_operations = []
 
 
-async def create_payment_link(amount, phone, telegram_user_id, telegram_message_id, application_id, type_payment,
-                              type_action):
+async def create_payment_link(amount, phone, telegram_user_id):
     try:
         async with AsyncSessionLocal() as session:
             async with session.begin():
@@ -33,19 +32,16 @@ async def create_payment_link(amount, phone, telegram_user_id, telegram_message_
                     merchant_password_1=config.MERCHANT_PASSWORD_1,
                     cost=amount,
                     number=number,
-                    description=phone.replace("+", "")
+                    description=phone.replace("+", ""),
+                    is_test=1
                 )
 
                 payment = Payment(
                     telegram_user_id=telegram_user_id,
-                    telegram_message_id=telegram_message_id,
                     amount=amount,
                     created=int(time.time() * 1000),
                     number=number,
                     status=2,
-                    application_id=application_id,
-                    type=type_payment,
-                    action=type_action,
                 )
 
                 session.add(payment)
@@ -79,40 +75,33 @@ async def check_status_payment(request):
                 payment = result.scalars().first()
 
                 user_id = payment.telegram_user_id
-                message_id = payment.telegram_message_id
 
-                if payment.action == "open":
-                    text = "Оплата подтверждена"
-                    try:
-                        await bot.edit_message_text(
-                            chat_id=user_id,
-                            message_id=message_id,
-                            text=text,
-                            reply_markup=kb.create_confirmation_keyboard()
-                        )
-                    except Exception as e:
-                        await bot.send_message(
-                            chat_id=user_id,
-                            text=text,
-                            reply_markup=kb.create_confirmation_keyboard()
-                        )
-                elif payment.action == "close":
-                    text = "Оплата подтверждена"
-                    try:
-                        await bot.edit_message_text(
-                            chat_id=user_id,
-                            message_id=message_id,
-                            text=text,
-                            reply_markup=kb.create_close_application_keyboard()
-                        )
-                    except Exception as e:
-                        await bot.send_message(
-                            chat_id=user_id,
-                            text=text,
-                            reply_markup=kb.create_close_application_keyboard()
-                        )
+                result = await session.execute(
+                    select(Subscription).filter(Subscription.telegram_user_id == user_id)
+                )
+                subscription = result.scalars().first()
+
+                if subscription is None:
+                    subscription = Subscription(
+                        telegram_user_id=user_id,
+                        price=payment.amount,
+                        status=2,
+                        end_time=int(time.time() * 1000) + 86400000 * 30,
+                    )
+                    session.add(subscription)
+                else:
+                    if subscription.end_time == -1:
+                        subscription.end_time = int(time.time() * 1000) + 86400000 * 30
+                    else:
+                        subscription.end_time += 86400000 * 30
+                    subscription.status = 0
 
                 payment.status = 0
+
+                await bot.send_message(
+                    chat_id=user_id,
+                    text="Доступ продлён"
+                )
 
             await session.commit()
     except Exception as e:

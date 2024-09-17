@@ -1,4 +1,5 @@
 import os
+import time
 import uuid
 from time import sleep
 import requests
@@ -14,6 +15,7 @@ from models.application import Application
 from db import AsyncSessionLocal
 from models.item_addiction import ItemAddiction
 from models.mask import Mask
+from models.subscription import Subscription
 from models.user import User
 from models.work import Work
 
@@ -101,12 +103,19 @@ async def show_applications(bot, user_id, chat_id):
                     User.telegram_user_id == user_id,
                     User.in_working == False,
                     User.banned == False,
-                    User.is_subscribed == True,
                 ))
             )
             user = result.scalars().first()
 
-            if user is None:
+            result = await session.execute(
+                select(Subscription).filter(and_(
+                    Subscription.telegram_user_id == user_id,
+                    Subscription.end_time > int(time.time() * 1000)
+                ))
+            )
+            subscription = result.scalars().first()
+
+            if user is None or subscription is None:
                 return
 
             result = await session.execute(
@@ -135,7 +144,6 @@ async def show_applications(bot, user_id, chat_id):
             for application in applications:
                 await show_application(
                     session=session,
-                    is_admin=user.admin,
                     application=application,
                     bot=bot,
                     chat_id=chat_id,

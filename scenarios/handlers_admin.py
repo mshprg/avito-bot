@@ -1,3 +1,6 @@
+import time
+from operator import and_
+
 from aiogram import Router, Bot, F, types
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -7,6 +10,7 @@ import callbacks
 from db import AsyncSessionLocal
 from message_processing import delete_state_messages, add_state_id, reset_state
 from models.addiction import Addiction
+from models.subscription import Subscription
 from models.user import User
 from states import States
 
@@ -90,6 +94,19 @@ def load_handlers_admin(dp, bot: Bot):
                             ...
                         await session.delete(ad)
 
+                    result = await session.execute(
+                        select(Subscription).filter(and_(
+                            Subscription.telegram_user_id == message.chat.id,
+                            Subscription.end_time > int(time.time() * 1000)
+                        ))
+                    )
+                    subscription = result.scalars().first()
+
+                    if subscription:
+                        is_subscription = True
+                    else:
+                        is_subscription = False
+
                     if user.in_working:
                         application, _ = await get_application_by_user(session, message.from_user.id)
 
@@ -104,9 +121,7 @@ def load_handlers_admin(dp, bot: Bot):
                     else:
                         in_working = False
 
-            data = await state.get_data()
             await state.clear()
-            await state.update_data(pay_type=data.get("pay_type", None))
 
             if in_working:
                 await show_messages_for_application(
@@ -120,20 +135,25 @@ def load_handlers_admin(dp, bot: Bot):
                 )
 
                 await state.set_state(States.message)
-            else:
+            elif is_subscription:
                 await show_applications(
                     chat_id=message.chat.id,
                     user_id=message.from_user.id,
                     bot=bot
+                )
+            else:
+                await bot.send_message(
+                    chat_id=message.chat.id,
+                    text="Время действия вашей подписки истекло"
                 )
         except Exception as e:
             print(e)
 
     @router.callback_query(F.data == callbacks.DELETE_MESSAGES_CALLBACK)
     async def delete_messages(callback_query: types.CallbackQuery, state: FSMContext):
-        state_ids = ["admin_ids", "commission_ids", "requisites_ids", "cities_ids", "make_admin_ids", "report_ids",
+        state_ids = ["admin_ids", "shop_ids", "cities_ids", "make_admin_ids", "report_ids",
                      "location_ids", "feedback_ids", "feedback_admin_ids", "payments_admin_ids", "ban_ids",
-                     "user_ids", "video_ids", "sending_ids"]
+                     "user_ids", "video_ids", "sending_ids", "subscribe_ids"]
         try:
             for state_name in state_ids:
                 data = await state.get_data()
@@ -141,8 +161,6 @@ def load_handlers_admin(dp, bot: Bot):
                 if callback_query.message.message_id in ids:
                     if state_name == "feedback_admin_ids":
                         await state.update_data(visible_feedbacks={})
-                    elif state_name == "confirmation_admin_ids":
-                        await state.update_data(visible_confirmations={})
                     await delete_state_messages(
                         state=state,
                         bot=bot,

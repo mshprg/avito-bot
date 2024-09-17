@@ -368,8 +368,8 @@ def load_handlers(dp, bot: Bot):
                 bot=bot
             )
 
-            text = ("У вас активрован пробный период работы: 3 дня. После истечения этого срока потребуется приобрести "
-                    "доступ")
+            text = ('У вас активрован пробный период работы: 3 дня. После истечения этого срока потребуется приобрести '
+                    'доступ к заявкам, используйте кнопку "Информация о подписке" на клавиатуре')
 
             await send_state_message(
                 state=state,
@@ -400,14 +400,12 @@ def load_handlers(dp, bot: Bot):
                     telegram_chat_id=callback_query.message.chat.id,
                     admin=admin,
                     in_working=False,
-                    is_subscribed=True,
                 )
 
                 end_time = int(time.time() * 1000) + 86400000 * 3
 
                 subscription = Subscription(
                     telegram_user_id=callback_query.message.chat.id,
-                    price=0,
                     status=3,
                     end_time=end_time,
                 )

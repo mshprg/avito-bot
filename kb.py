@@ -29,7 +29,7 @@ def create_cities_keyboard(cities):
 def create_feedback_keyboard():
     button_1 = KeyboardButton(text="Обратная связь")
     button_2 = KeyboardButton(text="Обучающие видео")
-    button_3 = KeyboardButton(text="Купить подписку")
+    button_3 = KeyboardButton(text="Информация о подписке")
     return ReplyKeyboardMarkup(keyboard=[[button_1], [button_2], [button_3]])
 
 
@@ -78,31 +78,12 @@ def create_application_keyboard():
     return generate_inline_markup([['Взять заявку', callbacks.TAKE_APPLICATION_CALLBACK]])
 
 
-def create_application_admin_keyboard():
-    return generate_inline_markup([['Взять заявку бесплатно', callbacks.OPEN_APPLICATION_CALLBACK]])
-
-
-def create_price_keyboard(percent, fixed):
-    return generate_inline_markup([
-        [f'{percent}% от выручки', callbacks.OPEN_APPLICATION_CALLBACK],
-        [f'{fixed} руб.', callbacks.SELECT_FIXED_CALLBACK]
-    ])
-
-
 def create_back_to_apps_keyboard():
     return generate_inline_markup([['Отказаться от заявки', callbacks.BACK_TO_APPS_CALLBACK]])
 
 
 def create_exactly_back_keyboard():
     return generate_inline_markup([['Я точно хочу отказаться', callbacks.EXACTLY_BACK_CALLBACK]])
-
-
-def create_paid_fixed_callback():
-    return generate_inline_markup([['Я оплатил', callbacks.PAID_FIXED_CALLBACK]])
-
-
-def create_confirmation_keyboard():
-    return generate_inline_markup([['Открыть заявку', callbacks.OPEN_APPLICATION_CALLBACK]])
 
 
 def create_application_actions_keyboard():
@@ -158,10 +139,9 @@ def create_manage_cities_keyboard():
     ])
 
 
-def create_manage_commission_keyboard():
+def create_manage_shop_keyboard():
     return generate_inline_markup([
-        ['Изменить фикс. комиссию', callbacks.CHANGE_FIXED_CALLBACK],
-        ['Изменить комиссию в процентах', callbacks.CHANGE_PERCENT_CALLBACK],
+        ['Изменить цену подписки на 30 дней', callbacks.CHANGE_30_CALLBACK],
         ['Удалить сообщения для администратора', callbacks.DELETE_MESSAGES_CALLBACK],
     ])
 
@@ -195,4 +175,16 @@ def create_select_sending_keyboard():
     return generate_inline_markup([
         ['Отправить сообщение всем пользователям', callbacks.SEND_MESSAGE_ALL_CALLBACK],
         ['Выбрать локацию', callbacks.SELECT_SENDING_CITY_CALLBACK],
+    ])
+
+
+def create_pay_subscribe_keyboard():
+    return generate_inline_markup([
+        ['Оплатить доступ', callbacks.BUY_SUBSCRIBE_CALLBACK],
+    ])
+
+
+def create_admin_subscribe_keyboard():
+    return generate_inline_markup([
+        ['Продлить подписку бесплатно', callbacks.BUY_ADMIN_SUBSCRIBE_CALLBACK],
     ])

@@ -343,7 +343,6 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
                     last_message_time=int(created),
                     last_message_text=content,
                     username=username,
-                    pay_type="None"
                 )
 
                 session.add(application)
@@ -362,7 +361,6 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
                         select(User).filter(and_(
                             User.in_working == False,
                             User.banned == False,
-                            User.in_waiting == False,
                         ))
                     )
                     users = result.scalars().all()
@@ -372,7 +370,6 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
                             session=session,
                             application=application,
                             user_city=user.city,
-                            is_admin=user.admin,
                             bot=main.bot,
                             chat_id=user.telegram_chat_id
                         )
