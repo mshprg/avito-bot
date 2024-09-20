@@ -168,7 +168,7 @@ async def delete_message_ids(session, bot, telegram_chat_id):
 
 
 def to_date(timestamp, only_date=False):
-    dt_object = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+    dt_object = datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc)
     date_utc_plus_3 = dt_object.astimezone(timezone(timedelta(hours=3)))
     if only_date:
         formatted_date = date_utc_plus_3.strftime('%d-%m-%Y')

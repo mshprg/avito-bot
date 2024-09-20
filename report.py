@@ -74,25 +74,22 @@ async def collect_data(session, start_unix, end_unix):
 
     df_user = await collect_user_data(session, start_unix, end_unix)
 
-    print(df_app)
-    print(df_user)
-
     if df_app is None and df_user is None:
         return None
 
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        if df_app:
+        if df_app is not None:
             df_app.to_excel(writer, index=False, sheet_name='Заявки')
-        if df_user:
+        if df_user is not None:
             df_user.to_excel(writer, index=False, sheet_name='Пользователи')
     output.seek(0)
     excel_bytes = output.getvalue()
 
     if end_unix - start_unix >= 86400000 * 1.3:
-        date_str = datetime.fromtimestamp(end_unix - 60 * 1000).strftime("%m-%Y")
+        date_str = datetime.fromtimestamp(end_unix / 1000 - 60).strftime("%m-%Y")
     else:
-        date_str = datetime.fromtimestamp(end_unix - 60 * 1000).strftime("%d-%m-%Y")
+        date_str = datetime.fromtimestamp(end_unix / 1000 - 60).strftime("%d-%m-%Y")
 
     report = InputMediaDocument(
         media=BufferedInputFile(
@@ -115,9 +112,12 @@ async def collect_user_data(session, start_unix, end_unix):
     )
     new_users = result.scalars().all()
 
+    if len(new_users) == 0:
+        return None
+
     num, create_user, fio, phone, pay_date, next_pay_date, is_payed, pay_price = [], [], [], [], [], [], [], []
 
-    user_ids = [user.telegram_user_id for user in new_users]
+    user_ids = [int(user.telegram_user_id) for user in new_users]
 
     result = await session.execute(
         select(Subscription).filter(Subscription.telegram_user_id.in_(user_ids))
@@ -152,7 +152,7 @@ async def collect_user_data(session, start_unix, end_unix):
         fio.append(u.name)
         phone.append(u.phone)
 
-        if u.is_admin:
+        if u.admin:
             pay_date.append("-")
             is_payed.append("ДА")
             next_pay_date.append("-")
@@ -176,6 +176,8 @@ async def collect_user_data(session, start_unix, end_unix):
                     pay_price.append(0)
                 elif subscription.status == 0:
                     pay_price.append(last_payment.amount if last_payment else 0)
+                else:
+                    pay_price.append("-")
             else:
                 is_payed.append("НЕТ")
                 next_pay_date.append("-")

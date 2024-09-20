@@ -171,7 +171,7 @@ async def handle_webhook_message(request):
     chat_id = value['chat_id']
     user_id = value['user_id']
     author_id = value['author_id']
-    created = value['created']
+    created = int(time() * 1000)
     m_type = value['type']
     if m_type == 'text':
         content = value['content']['text']

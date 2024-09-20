@@ -127,7 +127,7 @@ def load_handlers(dp, bot: Bot):
                         for p in payments:
                             await session.delete(p)
 
-                    text = f"<b><a href='{link}'>Ссылка на оплату</a></b>"
+                    text = f"<b><a href='{link}'>Ссылка на оплату</a>\nПосле оплаты ожидайте сообщение</b>"
 
                     await send_state_message(
                         state=state,
