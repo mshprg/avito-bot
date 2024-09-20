@@ -63,11 +63,11 @@ def load_handlers(dp, bot: Bot):
                 date_obj = datetime.strptime(date_str, '%m.%Y')
 
                 start_of_month = datetime(date_obj.year, date_obj.month, 1)
-                start_unix = int(time.mktime(start_of_month.timetuple()))
+                start_unix = int(time.mktime(start_of_month.timetuple())) * 1000
 
                 _, last_day = calendar.monthrange(date_obj.year, date_obj.month)
                 end_of_month = datetime(date_obj.year, date_obj.month, last_day, 23, 59, 59)
-                end_unix = int(time.mktime(end_of_month.timetuple()))
+                end_unix = int(time.mktime(end_of_month.timetuple())) * 1000
             except ValueError:
                 pass
 
@@ -75,10 +75,10 @@ def load_handlers(dp, bot: Bot):
                 date_obj = datetime.strptime(date_str, '%d.%m.%Y')
 
                 start_of_day = datetime(date_obj.year, date_obj.month, date_obj.day)
-                start_unix = int(time.mktime(start_of_day.timetuple()))
+                start_unix = int(time.mktime(start_of_day.timetuple())) * 1000
 
                 end_of_day = datetime(date_obj.year, date_obj.month, date_obj.day, 23, 59, 59)
-                end_unix = int(time.mktime(end_of_day.timetuple()))
+                end_unix = int(time.mktime(end_of_day.timetuple())) * 1000
             except ValueError:
                 pass
 
@@ -96,7 +96,7 @@ def load_handlers(dp, bot: Bot):
                         else:
                             await bot.send_message(
                                 chat_id=message.chat.id,
-                                text="За данный период нет новых заявок"
+                                text="За данный период нет новых заявок или новых пользователей"
                             )
 
             await reset_state(state)

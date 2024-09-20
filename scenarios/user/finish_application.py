@@ -84,6 +84,8 @@ def load_handlers(dp, bot: Bot):
                     application.in_working = False
                     user.in_working = False
 
+                    application.close_app_time = int(time.time() * 1000)
+
                     await session.delete(work)
 
                 await session.commit()

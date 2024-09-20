@@ -185,7 +185,7 @@ def load_handlers(dp, bot: Bot):
 
                     sms_text = f'Код регистрации для "Заявка легко": {random_code}'
 
-                    api = SmsAero(config.SMSAERO_EMAIL, config.SMSAERO_API_KEY)
+                    # api = SmsAero(config.SMSAERO_EMAIL, config.SMSAERO_API_KEY)
                     try:
                         ...
                         # await api.send_sms(int(phone.replace("+", "")), sms_text)
@@ -193,7 +193,8 @@ def load_handlers(dp, bot: Bot):
                         await send_state_message(
                             state=state,
                             message=message,
-                            text="Мы не можем отправить код на данный номер телефона, введите друой номер",
+                            text="Мы не можем отправить код на данный номер телефона, введите друой номер или "
+                                 "попробуйте позже",
                         )
                         await state.set_state(States.phone)
                         await session.close()
@@ -400,6 +401,7 @@ def load_handlers(dp, bot: Bot):
                     telegram_chat_id=callback_query.message.chat.id,
                     admin=admin,
                     in_working=False,
+                    created=int(time.time() * 1000)
                 )
 
                 end_time = int(time.time() * 1000) + 86400000 * 3

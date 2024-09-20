@@ -19,4 +19,5 @@ class Application(Base):
     created: int = Column(BigInteger, nullable=False)
     last_message_time: int = Column(BigInteger, nullable=False)
     last_message_text: str = Column(String, nullable=False)
+    close_app_time: int = Column(BigInteger, nullable=False, default=-1)
     username: str = Column(String, nullable=False)

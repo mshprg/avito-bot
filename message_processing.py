@@ -8,6 +8,8 @@ from aiogram.types import Message
 from sqlalchemy import select
 from models.user import User
 
+from datetime import timezone, timedelta, datetime
+
 
 async def delete_messages(bot, ids, chat_id):
     try:
@@ -165,7 +167,11 @@ async def delete_message_ids(session, bot, telegram_chat_id):
         print(e)
 
 
-def to_date(timestamp):
-    dt_object = datetime.datetime.fromtimestamp(timestamp)
-    formatted_date = dt_object.strftime('%H:%M:%S %d-%m-%Y')
+def to_date(timestamp, only_date=False):
+    dt_object = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+    date_utc_plus_3 = dt_object.astimezone(timezone(timedelta(hours=3)))
+    if only_date:
+        formatted_date = date_utc_plus_3.strftime('%d-%m-%Y')
+    else:
+        formatted_date = date_utc_plus_3.strftime('%H:%M:%S %d-%m-%Y')
     return formatted_date

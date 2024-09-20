@@ -14,6 +14,7 @@ class User(Base):
     admin: bool = Column(Boolean, nullable=False, default=False)
     banned: bool = Column(Boolean, nullable=False, default=False)
     income_message_ids: str = Column(String, nullable=False, default="[]")
+    created: int = Column(BigInteger, nullable=False)
 
     def to_dict(self):
         return {
