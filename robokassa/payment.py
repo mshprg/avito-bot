@@ -13,7 +13,7 @@ from db import AsyncSessionLocal
 handled_operations = []
 
 
-async def create_payment_link(amount, phone, telegram_user_id):
+async def create_payment_link(receipt, amount, phone, telegram_user_id):
     try:
         async with AsyncSessionLocal() as session:
             async with session.begin():
@@ -33,6 +33,7 @@ async def create_payment_link(amount, phone, telegram_user_id):
                     cost=amount,
                     number=number,
                     description=phone.replace("+", ""),
+                    receipt=receipt,
                     is_test=1
                 )
 

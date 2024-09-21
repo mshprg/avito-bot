@@ -117,10 +117,25 @@ def load_handlers(dp, bot: Bot):
                     )
                     shop = result.scalars().first()
 
+                    receipt = {
+                        "items": [
+                            {
+                                "name": "Доступ к заявкам на 30 дней",
+                                "quantity": 1,
+                                "sum": shop.subscribe_30days,
+                                "cost": shop.subscribe_30days,
+                                "payment_method": "full_payment",
+                                "payment_object": "service",
+                                "tax": "none"
+                            }
+                        ]
+                    }
+
                     link = await create_payment_link(
                         amount=shop.subscribe_30days,
                         phone=user.phone,
                         telegram_user_id=user.telegram_user_id,
+                        receipt=receipt,
                     )
 
                     if len(payments):

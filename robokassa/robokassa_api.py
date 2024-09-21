@@ -1,5 +1,7 @@
 import decimal
 import hashlib
+import json
+import urllib
 from urllib import parse
 from urllib.parse import urlparse
 
@@ -40,6 +42,7 @@ def generate_payment_link(
     cost: decimal,  # Cost of goods, RU
     number: int,  # Invoice number
     description: str,  # Description of the purchase
+    receipt,
     is_test = 0,
     robokassa_payment_url = 'https://auth.robokassa.ru/Merchant/Index.aspx',
 ) -> str:
@@ -49,6 +52,7 @@ def generate_payment_link(
         merchant_login,
         cost,
         number,
+        receipt,
         merchant_password_1
     )
 
@@ -60,6 +64,10 @@ def generate_payment_link(
         'SignatureValue': signature,
         'IsTest': is_test
     }
+
+    if receipt:
+        data['Receipt'] = json.dumps(receipt)
+
     return f'{robokassa_payment_url}?{parse.urlencode(data)}'
 
 
