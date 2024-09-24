@@ -13,6 +13,8 @@ from models.application import Application
 from models.payment import Payment
 from models.subscription import Subscription
 from models.user import User
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment
 
 
 async def generate_report():
@@ -83,6 +85,24 @@ async def collect_data(session, start_unix, end_unix):
             df_app.to_excel(writer, index=False, sheet_name='Заявки')
         if df_user is not None:
             df_user.to_excel(writer, index=False, sheet_name='Пользователи')
+
+        for sheet_name in writer.sheets:
+            worksheet = writer.sheets[sheet_name]
+
+            for col in range(1, worksheet.max_column + 1):
+                col_letter = get_column_letter(col)
+                worksheet.column_dimensions[col_letter].width = 30
+
+            first_col_letter = get_column_letter(1)
+            for row in range(1, worksheet.max_row + 1):
+                cell = worksheet[f'{first_col_letter}{row}']
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+
+            for col in range(1, worksheet.max_column + 1):
+                header_cell = worksheet[f'{get_column_letter(col)}1']
+                header_cell.value = header_cell.value.replace('\\n', '\n')
+                header_cell.alignment = Alignment(wrap_text=True, horizontal='center', vertical='center')
+
     output.seek(0)
     excel_bytes = output.getvalue()
 
@@ -186,7 +206,7 @@ async def collect_user_data(session, start_unix, end_unix):
     data = {
         "№": num,
         "Дата регистрации\nИсполнителя": create_user,
-        "ФИО\nИсполнителя": fio,
+        "Ф.И.О.\nИсполнителя": fio,
         "Телефон\nИсполнителя": phone,
         "Даты оплаты подписки\nИсполнителем": pay_date,
         "Дата следующей оплата подпистки\nИсполнителем": next_pay_date,
@@ -257,8 +277,8 @@ async def collect_application_data(session, start_unix, end_unix):
         "Первое сообщение\nЗаказчика": first_message,
         "Последнее сообщение\nЗаказчика": last_message,
         "Дата обращения\nЗаказчика": create_date,
-        "Дата последнего\nсообщения": last_message_date,
-        "Дата закрытия\nзаявки": close_date
+        "Дата последнего сообщения": last_message_date,
+        "Дата закрытия заявки": close_date
     }
 
     df = pd.DataFrame(data)

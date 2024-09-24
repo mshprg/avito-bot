@@ -48,11 +48,15 @@ def generate_payment_link(
 ) -> str:
     """URL for redirection of the customer to the service.
     """
+
+    json_receipt = json.dumps(receipt)
+    encoded_receipt = urllib.parse.quote(json_receipt)
+
     signature = calculate_signature(
         merchant_login,
         cost,
         number,
-        receipt,
+        encoded_receipt,
         merchant_password_1
     )
 
@@ -66,7 +70,7 @@ def generate_payment_link(
     }
 
     if receipt:
-        data['Receipt'] = json.dumps(receipt)
+        data['Receipt'] = encoded_receipt
 
     return f'{robokassa_payment_url}?{parse.urlencode(data)}'
 

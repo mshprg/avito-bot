@@ -125,6 +125,12 @@ def create_deactivate_admin_keyboard():
     ])
 
 
+def create_delete_shop_messages():
+    return generate_inline_markup([
+        ['Удалить сообщения', callbacks.DELETE_MESSAGES_CALLBACK],
+    ])
+
+
 def create_delete_admin_messages_keyboard():
     return generate_inline_markup([
         ['Удалить сообщения для администратора', callbacks.DELETE_MESSAGES_CALLBACK],

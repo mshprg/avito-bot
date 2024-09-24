@@ -89,7 +89,7 @@ def load_handlers(dp, bot: Bot):
                 message=message,
                 text="Действия",
                 state_name="subscribe_ids",
-                keyboard=kb.create_delete_admin_messages_keyboard()
+                keyboard=kb.create_delete_shop_messages()
             )
         except Exception as e:
             print(e)

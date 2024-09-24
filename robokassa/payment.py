@@ -34,7 +34,7 @@ async def create_payment_link(receipt, amount, phone, telegram_user_id):
                     number=number,
                     description=phone.replace("+", ""),
                     receipt=receipt,
-                    is_test=1
+                    is_test=0
                 )
 
                 payment = Payment(
@@ -85,7 +85,6 @@ async def check_status_payment(request):
                 if subscription is None:
                     subscription = Subscription(
                         telegram_user_id=user_id,
-                        price=payment.amount,
                         status=2,
                         end_time=int(time.time() * 1000) + 86400000 * 30,
                     )
