@@ -185,10 +185,9 @@ def load_handlers(dp, bot: Bot):
 
                     sms_text = f'Код регистрации для "Заявка легко": {random_code}'
 
-                    # api = SmsAero(config.SMSAERO_EMAIL, config.SMSAERO_API_KEY)
+                    api = SmsAero(config.SMSAERO_EMAIL, config.SMSAERO_API_KEY)
                     try:
-                        ...
-                        # await api.send_sms(int(phone.replace("+", "")), sms_text)
+                        await api.send_sms(int(phone.replace("+", "")), sms_text)
                     except:
                         await send_state_message(
                             state=state,
