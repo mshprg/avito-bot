@@ -218,7 +218,7 @@ async def handle_webhook_message(request):
         messages = get_messages(user_id, chat_id)['messages']
         count_messages = count_author_messages(messages, author_id)
 
-        if count_messages <= 1000 and author_id != user_id:
+        if count_messages <= 1 and author_id != user_id:
             await add_new_application(
                 user_id=user_id,
                 chat_id=chat_id,
