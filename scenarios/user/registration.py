@@ -59,7 +59,7 @@ def load_handlers(dp, bot: Bot):
 
                     media = [
                         InputMediaVideo(
-                            media="BAACAgIAAxkBAAJA-mbWIw-8YGxgvsNOPha5JfdhwZ5sAAIeXQACIQ6xSlSHuUJ2GE_uNQQ",
+                            media="BAACAgIAAxkBAAJmZGb5sz9S0VK2SKRlBsMN7Uq-k18UAAJBXAACToTQSzeguoXgZte9NgQ",
                             caption="Перед регистрацией ознакомьтесь с видео",
                         )
                     ]
@@ -347,26 +347,6 @@ def load_handlers(dp, bot: Bot):
                 await session.commit()
 
             await state.update_data(city=message.text)
-
-            media = [
-                InputMediaVideo(media='BAACAgIAAxkBAAIcFmbHzfVmDRjILdprqCvC0qafunmUAAJxTAACRedAStenQseCZodmNQQ'),
-                InputMediaVideo(media='BAACAgIAAxkBAAIcF2bHzfVnkMcmL3B6vL0G5ip3oLJFAAJyTAACRedASmeuxIUdxcoMNQQ'),
-                InputMediaVideo(media='BAACAgIAAxkBAAIcGGbHzfVI-phdmyBpkLeW3eIdjK0FAAJzTAACRedASv7gevgwIDWFNQQ')
-            ]
-
-            await send_state_message(
-                state=state,
-                message=message,
-                text="Видео работы бота:\n",
-                keyboard=types.ReplyKeyboardRemove()
-            )
-
-            await send_state_media(
-                state=state,
-                chat_id=message.chat.id,
-                media=media,
-                bot=bot
-            )
 
             text = ('У вас активрован пробный период работы: 3 дня. После истечения этого срока потребуется приобрести '
                     'доступ к заявкам, используйте кнопку "Информация о подписке" на клавиатуре')

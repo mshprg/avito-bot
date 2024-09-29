@@ -20,9 +20,7 @@ def load_handlers(dp, bot: Bot):
         )
 
         media = [
-            InputMediaVideo(media='BAACAgIAAxkBAAIcFmbHzfVmDRjILdprqCvC0qafunmUAAJxTAACRedAStenQseCZodmNQQ'),
-            InputMediaVideo(media='BAACAgIAAxkBAAIcF2bHzfVnkMcmL3B6vL0G5ip3oLJFAAJyTAACRedASmeuxIUdxcoMNQQ'),
-            InputMediaVideo(media='BAACAgIAAxkBAAIcGGbHzfVI-phdmyBpkLeW3eIdjK0FAAJzTAACRedASv7gevgwIDWFNQQ')
+            InputMediaVideo(media='BAACAgIAAxkBAAJmZGb5sz9S0VK2SKRlBsMN7Uq-k18UAAJBXAACToTQSzeguoXgZte9NgQ'),
         ]
 
         await send_state_media(
