@@ -194,3 +194,9 @@ def create_admin_subscribe_keyboard():
     return generate_inline_markup([
         ['Продлить подписку бесплатно', callbacks.BUY_ADMIN_SUBSCRIBE_CALLBACK],
     ])
+
+
+def create_restart_bot_keyboard():
+    return generate_inline_markup([
+        ['Да, перезагрузить бота', callbacks.RESTART_BOT_CALLBACK]
+    ])

@@ -173,8 +173,8 @@ async def collect_user_data(session, start_unix, end_unix):
         phone.append(u.phone)
 
         if u.admin:
-            pay_date.append("-")
-            is_payed.append("ДА")
+            pay_date.append("НЕТ")
+            is_payed.append("НЕТ")
             next_pay_date.append("-")
             pay_price.append(0)
         else:
