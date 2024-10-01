@@ -13,7 +13,7 @@ from sqlalchemy import select
 from models.user import User
 from scenarios import handlers, handlers_admin
 from scenarios.admin import ban_users, generate_report, manage_admins, manage_cities, manage_shop, \
-    manage_payments, manage_items, manage_questions_improvements, \
+    manage_payments, manage_items, manage_questions_improvements, restart_bot, \
     manage_users, sending
 from scenarios.user import create_feedback, finish_application, open_application, registration, stop_application, \
     user_improvements_questions, show_educational_videos, shop
@@ -23,7 +23,6 @@ import avito
 from robokassa import payment
 from models.city import City
 from models.shop import Shop
-from models.requisites import Requisites
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -61,6 +60,7 @@ async def start_bot():
     manage_items.load_handlers(dp, bot)
     manage_questions_improvements.load_handlers(dp, bot)
     manage_users.load_handlers(dp, bot)
+    restart_bot.load_handlers(dp, bot)
     sending.load_handlers(dp, bot)
 
     create_feedback.load_handlers(dp, bot)

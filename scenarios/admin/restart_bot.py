@@ -16,7 +16,7 @@ from models.user import User
 def load_handlers(dp, bot: Bot):
     router = Router()
 
-    @router.message(F.text, Command('restart-bot'), UserFilter(check_admin=True))
+    @router.message(F.text, Command('restart'), UserFilter(check_admin=True))
     async def restart_bot_command_handler(message: types.Message):
         try:
             await message.answer(
