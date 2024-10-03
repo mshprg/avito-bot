@@ -2,6 +2,7 @@ from time import sleep
 
 import requests
 from aiogram import Router, Bot, F, types
+from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from sqlalchemy import select
 
@@ -40,11 +41,12 @@ def load_handlers(dp, bot: Bot):
                         sleep(0.2)
                         try:
                             await bot.send_message(
-                                text="<b>Внимание!</b>\nБот сейчас будет перезагружается.",
+                                text="<b>Внимание!</b>\nБот перезагружается, дождитесь сообщения о перезапуске.",
                                 chat_id=u.telegram_chat_id,
+                                parse_mode=ParseMode.HTML,
                             )
                         except Exception as e:
-                            pass
+                            print(e)
 
                     container_name = config.DOCKER_CONTAINER_NAME
                     api_url = config.DOCKER_API_URL
