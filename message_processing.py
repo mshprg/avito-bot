@@ -58,13 +58,6 @@ async def send_state_message(state, message=None, text=None, keyboard=None, chat
                              parse_mode=None, state_name: str = "ids") -> Message | None:
     try:
         if chat_id is not None and bot is not None:
-            # m = await try_send_message(
-            #     func=bot.send_message,
-            #     chat_id=chat_id,
-            #     text=text,
-            #     reply_markup=keyboard,
-            #     parse_mode=parse_mode,
-            # )
             m = await bot.send_message(
                 chat_id=chat_id,
                 text=text,
@@ -72,10 +65,6 @@ async def send_state_message(state, message=None, text=None, keyboard=None, chat
                 parse_mode=parse_mode,
             )
         else:
-            # m = await try_send_message(
-            #     func=message.answer,
-            #     text=text, reply_markup=keyboard, parse_mode=parse_mode
-            # )
             m = await message.answer(text=text, reply_markup=keyboard, parse_mode=parse_mode)
         data = await state.get_data()
         ids = data.get(state_name, [])

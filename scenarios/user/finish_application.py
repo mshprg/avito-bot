@@ -1,25 +1,18 @@
-import io
 import time
 from time import sleep
 
 from aiogram import Router, Bot, F, types
 from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InputMediaPhoto
-from sqlalchemy import and_, select
+from sqlalchemy import select
 
 import callbacks
 import kb
-import s3_cloud
 from db import AsyncSessionLocal
 from filters import UserFilter
-from message_processing import delete_message_ids, delete_state_messages, send_state_message, add_state_id
-from models.application import Application
-from models.image import Image
+from message_processing import delete_message_ids, delete_state_messages, send_state_message
 from models.subscription import Subscription
 from models.user import User
-from robokassa.payment import create_payment_link
-from states import States
 
 media_groups = {}
 

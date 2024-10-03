@@ -1,5 +1,4 @@
 import time
-from time import sleep
 
 from aiogram import Router, Bot, F, types
 from aiogram.enums import ParseMode
@@ -10,12 +9,10 @@ import callbacks
 import kb
 from db import AsyncSessionLocal
 from filters import UserFilter
-from message_processing import send_state_message, delete_state_messages, delete_message_ids, add_state_id
+from message_processing import delete_state_messages, delete_message_ids
 from models.mask import Mask
-from models.payment import Payment
 from models.subscription import Subscription
 from models.user import User
-from states import States
 
 
 def load_handlers(dp, bot: Bot):
