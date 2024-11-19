@@ -58,7 +58,7 @@ async def show_application(session, application, user_city, bot: Bot, chat_id, i
                 return
             file_bytes = response.content
             name = str(uuid.uuid4())
-            text += f"<b>Заявка от пользователя {application.username}:</b>"
+            text += f"Заявка от пользователя {application.username}:</b>"
             media = InputMediaPhoto(
                 media=BufferedInputFile(file_bytes, filename=f'image_{name}.jpg'),
             )
@@ -85,7 +85,7 @@ async def show_application(session, application, user_city, bot: Bot, chat_id, i
             session.add(addiction1)
             session.add(addiction2)
         else:
-            text += (f"<b>Заявка от пользователя {application.username}:</b>\n\nДанный тип сообщения невозможно "
+            text += (f"Заявка от пользователя {application.username}:</b>\n\nДанный тип сообщения невозможно "
                      f"обработать в Telegram, но вы можете взять заявку")
             m = await bot.send_message(
                 chat_id=chat_id,
