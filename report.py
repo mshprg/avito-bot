@@ -6,6 +6,7 @@ import pandas as pd
 from aiogram.types import InputMediaDocument, BufferedInputFile
 from sqlalchemy import select, and_, func
 
+import config
 from db import AsyncSessionLocal
 from main import bot
 from message_processing import to_date
@@ -24,7 +25,13 @@ async def generate_report():
                 select(User).filter(User.admin == True)
             )
 
-            users = result.scalars().all()
+            users_db = result.scalars().all()
+
+            users = []
+
+            for user in users_db:
+                if user.telegram_user_id in config.ROOT_USER_IDS:
+                    users.append(user)
 
             now = datetime.now()
             yesterday_start = datetime(now.year, now.month, now.day) - timedelta(days=1)

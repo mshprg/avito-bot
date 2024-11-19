@@ -6,6 +6,7 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy import select, and_
 
 import callbacks
+import config
 import kb
 from db import AsyncSessionLocal
 from filters import UserFilter
@@ -85,6 +86,7 @@ def load_handlers(dp, bot: Bot):
                                 bot=bot,
                                 chat_id=u.telegram_chat_id,
                                 user_city=u.city,
+                                is_root_admin=u.telegram_user_id in config.ROOT_USER_IDS,
                             )
 
                     await delete_message_ids(

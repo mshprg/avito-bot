@@ -7,6 +7,7 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy import select, and_
 
 import callbacks
+import config
 import kb
 from db import AsyncSessionLocal
 from filters import UserFilter
@@ -168,7 +169,8 @@ def load_handlers(dp, bot: Bot):
                                 application=ap,
                                 user_city=user.city,
                                 bot=bot,
-                                chat_id=user.telegram_chat_id
+                                chat_id=user.telegram_chat_id,
+                                is_root_admin=user.telegram_user_id in config.ROOT_USER_IDS,
                             )
 
                 await session.commit()

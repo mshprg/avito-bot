@@ -125,11 +125,11 @@ def load_handlers(dp, bot: Bot):
                             for u in users:
                                 await show_application(
                                     session=session,
-                                    is_admin=u.admin,
                                     application=application,
                                     user_city=u.city,
                                     bot=bot,
-                                    chat_id=u.telegram_chat_id
+                                    chat_id=u.telegram_chat_id,
+                                    is_root_admin=user.telegram_user_id in config.ROOT_USER_IDS,
                                 )
 
                     if user.banned:

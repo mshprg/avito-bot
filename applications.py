@@ -8,6 +8,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import InputMediaPhoto, BufferedInputFile, InputMediaDocument
 from sqlalchemy import select, and_
 import avito
+import config
 import kb
 from message_processing import send_state_message, send_state_media
 from models.addiction import Addiction
@@ -20,16 +21,24 @@ from models.user import User
 from models.work import Work
 
 
-async def show_application(session, application, user_city, bot: Bot, chat_id):
+async def show_application(session, application, user_city, bot: Bot, chat_id, is_root_admin=False):
     try:
         location = application.item_location.split(', ')
-        if user_city not in location:
+        if user_city not in location and not is_root_admin:
             return
+
+        text = "<b>"
+
+        if is_root_admin:
+            text += "Локация: "
+            for loc in location:
+                text += f"{loc} "
+            text += "\n\n"
 
         keyboard = kb.create_application_keyboard()
 
         if application.type == 'text':
-            text = f"<b>Заявка от пользователя {application.username}:</b>\n\n{application.content}"
+            text += f"Заявка от пользователя {application.username}:</b>\n\n{application.content}"
             m = await bot.send_message(
                 chat_id=chat_id,
                 text=text,
@@ -49,7 +58,7 @@ async def show_application(session, application, user_city, bot: Bot, chat_id):
                 return
             file_bytes = response.content
             name = str(uuid.uuid4())
-            text = f"<b>Заявка от пользователя {application.username}:</b>"
+            text += f"<b>Заявка от пользователя {application.username}:</b>"
             media = InputMediaPhoto(
                 media=BufferedInputFile(file_bytes, filename=f'image_{name}.jpg'),
             )
@@ -76,12 +85,13 @@ async def show_application(session, application, user_city, bot: Bot, chat_id):
             session.add(addiction1)
             session.add(addiction2)
         else:
-            text = (f"<b>Заявка от пользователя {application.username}:</b>\n\nДанный тип сообщения невозможно "
-                    f"обработать в Telegram, но вы можете взять заявку")
+            text += (f"<b>Заявка от пользователя {application.username}:</b>\n\nДанный тип сообщения невозможно "
+                     f"обработать в Telegram, но вы можете взять заявку")
             m = await bot.send_message(
                 chat_id=chat_id,
                 text=text,
                 reply_markup=keyboard,
+                parse_mode=ParseMode.HTML,
             )
             addiction = Addiction(
                 application_id=application.id,
@@ -147,7 +157,8 @@ async def show_applications(bot, user_id, chat_id):
                     application=application,
                     bot=bot,
                     chat_id=chat_id,
-                    user_city=user.city
+                    user_city=user.city,
+                    is_root_admin=user.telegram_user_id in config.ROOT_USER_IDS,
                 )
 
         await session.commit()
