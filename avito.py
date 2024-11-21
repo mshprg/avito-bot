@@ -100,6 +100,8 @@ def get_chat(user_id, chat_id):
 
 
 async def send_message(user_id, chat_id, text):
+    return
+    
     get_token_info()
     send_message_url = f'https://api.avito.ru/messenger/v1/accounts/{user_id}/chats/{chat_id}/messages'
 
