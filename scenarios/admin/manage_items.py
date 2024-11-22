@@ -170,7 +170,7 @@ def load_handlers(dp, bot: Bot):
                                 user_city=user.city,
                                 bot=bot,
                                 chat_id=user.telegram_chat_id,
-                                is_root_admin=user.telegram_user_id in config.ROOT_USER_IDS,
+                                is_root_admin=user.admin,
                             )
 
                 await session.commit()

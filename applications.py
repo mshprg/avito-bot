@@ -158,7 +158,7 @@ async def show_applications(bot, user_id, chat_id):
                     bot=bot,
                     chat_id=chat_id,
                     user_city=user.city,
-                    is_root_admin=user.telegram_user_id in config.ROOT_USER_IDS,
+                    is_root_admin=user.admin,
                 )
 
         await session.commit()

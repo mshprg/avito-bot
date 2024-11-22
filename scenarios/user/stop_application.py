@@ -86,7 +86,7 @@ def load_handlers(dp, bot: Bot):
                                 bot=bot,
                                 chat_id=u.telegram_chat_id,
                                 user_city=u.city,
-                                is_root_admin=u.telegram_user_id in config.ROOT_USER_IDS,
+                                is_root_admin=u.admin,
                             )
 
                     await delete_message_ids(
