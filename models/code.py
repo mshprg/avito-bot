@@ -1,5 +1,5 @@
 from db import Base
-from sqlalchemy import Column, BigInteger, Integer, TIMESTAMP, String
+from sqlalchemy import Column, BigInteger, Integer, String
 
 
 # Таблица хранит коды регистрации

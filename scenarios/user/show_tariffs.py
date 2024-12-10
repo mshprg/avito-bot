@@ -101,21 +101,12 @@ def load_handlers(dp, bot: Bot):
                     else:
                         keyboard = kb.create_pay_subscribe_keyboard()
 
-                    # Цена самомго долгого активного тарифа, купленного пользователем
-                    sub_price = 0
-
-                    # Выводим все доступные тарифы
-                    for tariff in tariffs:
-                        # Проверка, есть ли элемент с tariff.duration (куплен ли уже такой тариф)
-                        has_duration_one = any(
-                            subscription.duration >= tariff.duration for subscription in subscriptions)
-
-                        # Если нет, то выводим тариф для покупки
-                        if not has_duration_one:
+                    if len(subscriptions) == 0:
+                        # Выводим все доступные тарифы
+                        for tariff in tariffs:
                             text = f"<b>Длительность (месяцы):</b> {tariff.duration}\n"
                             text += f"<b>Описание:</b> {tariff.description}\n"
-                            text += (f"<b>Цена:</b> {tariff.price - sub_price} руб. "
-                                     f"{'' if sub_price == 0 else 'доплата к предыдущему тарифу'}")
+                            text += f"<b>Цена:</b> {tariff.price} руб."
 
                             if tariff.duration > 1:
                                 text += f"\n<b>Стоимость месяца:</b> {round(tariff.price / tariff.duration)} руб."
@@ -133,8 +124,6 @@ def load_handlers(dp, bot: Bot):
                                 'message_id': m.message_id,
                                 'tariff': tariff.to_dict(),
                             })
-                        else:
-                            sub_price = tariff.price
 
                     # Сохраняем массив соответствий message_id и tariff в стейт
                     await state.update_data(visible_tariffs=visible_tariffs)

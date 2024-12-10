@@ -1,12 +1,17 @@
 from aiogram.fsm.state import State, StatesGroup
 
 
-# Состояние
+# Все состояние
 class States(StatesGroup):
+    # Состояние ввода номера телефона
     phone = State()
+    # Состояние ввода ФИО
     name = State()
+    # Состояние ввода локации
     city = State()
+    # Состояние ввода кода, отправленного на телефон
     phone_code = State()
+    # Состояние ввода сообщения в чате авито
     message = State()
     avito_info = State()
     admin_change = State()
@@ -26,6 +31,7 @@ class States(StatesGroup):
     visible_tariffs = State()
     current_admin_tariff = State()
 
+    # Здесь храняться id сообщений
     ids = State()
     admin_ids = State()
     shop_ids = State()

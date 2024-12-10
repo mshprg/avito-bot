@@ -37,7 +37,7 @@ def schedule_jobs():
     import report
     try:
         scheduler.add_job(report.generate_report, 'cron', hour=0, minute=0)
-        # scheduler.add_job(delete_expired_subscriptions, 'interval', minute=1)
+        scheduler.add_job(delete_expired_subscriptions, 'interval', minutes=1)
         logger.info("Scheduled jobs")
         scheduler.start()
         logger.info("Scheduler started")
