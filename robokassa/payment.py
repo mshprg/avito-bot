@@ -42,7 +42,7 @@ async def create_payment_link(receipt, amount, phone, duration, description, tel
                     number=number,
                     description=phone.replace("+", ""),
                     receipt=receipt,
-                    is_test=1
+                    is_test=0
                 )
 
                 # Создаем платеж в бд со статусом ожидания
