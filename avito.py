@@ -234,7 +234,7 @@ async def handle_webhook_message(request):
         count_messages = count_author_messages(messages, author_id)
 
         # Чат считается новым если кол-во сообщений было менее или равно 1 и не от нас
-        if count_messages <= 1000 and author_id != user_id:
+        if count_messages <= 1 and author_id != user_id:
             # Создаем новую заявку
             await add_new_application(
                 user_id=user_id,
