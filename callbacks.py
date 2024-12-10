@@ -31,7 +31,7 @@ DELETE_MESSAGES_CALLBACK = "delete_admin_messages_callback"
 ADD_CITIES_CALLBACK = "add_cities_callback"
 DELETE_CITIES_CALLBACK = "delete_cities_callback"
 
-CHANGE_30_CALLBACK = "change_30_callback"
+CHANGE_TARIFF_CALLBACK = "change_30_callback"
 
 CHANGE_REQUISITES_CALLBACK = "change_requisites_callback"
 

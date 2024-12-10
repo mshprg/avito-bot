@@ -11,7 +11,6 @@ import kb
 from db import AsyncSessionLocal
 from filters import UserFilter
 from message_processing import delete_message_ids, delete_state_messages, send_state_message
-from models.subscription import Subscription
 from models.user import User
 
 media_groups = {}
@@ -21,11 +20,14 @@ def load_handlers(dp, bot: Bot):
     router = Router()
     from applications import show_applications
 
+    # Обработчик нажатия кнопки "Завершить заявку"
     @router.callback_query(F.data == callbacks.FINISH_APPLICATION_CALLBACK, UserFilter())
     async def finish_application(callback_query: types.CallbackQuery):
         try:
+            # Генерируем текст
             text = "<b>Вы уверены что хотите завершить работу по заявке?</b>"
 
+            # Меняем текст и кнопки сообщения
             await bot.edit_message_text(
                 text=text,
                 chat_id=callback_query.message.chat.id,
@@ -36,13 +38,16 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
+    # Обработчик кнопки "Назад"
     @router.callback_query(F.data == callbacks.BACK_TO_APPLICATION_CALLBACK, UserFilter())
     async def back_to_application(callback_query: types.CallbackQuery):
         try:
+            # Генерируем текст
             text = (
                 "*Дествия с зявкой:*\n_Завершить работу_ \- работа по зявке полностью выполнена, оплата получена\n"
                 "_Отказаться от заявки_ \- отказ от работы с заявкой, вы больше не сможете взять эту заявку")
 
+            # Меняем сообщение и кнопку обратно
             await bot.edit_message_text(
                 text=text,
                 chat_id=callback_query.message.chat.id,
@@ -53,36 +58,34 @@ def load_handlers(dp, bot: Bot):
         except Exception as e:
             print(e)
 
+    # Обработчик нажатия кнопки "Я получил оплату, завершить работу"
     @router.callback_query(F.data == callbacks.EXACTLY_FINISH_CALLBACK, UserFilter())
     async def close_application_callback(callback_query: types.CallbackQuery, state: FSMContext):
         from applications import get_application_by_user
         try:
             async with AsyncSessionLocal() as session:
                 async with session.begin():
+                    # Находим юзера в бд
                     result = await session.execute(
                         select(User).filter(User.telegram_user_id == callback_query.from_user.id)
                     )
                     user = result.scalars().first()
 
-                    result = await session.execute(
-                        select(Subscription).filter(Subscription.telegram_user_id == callback_query.from_user.id)
-                    )
-                    subscription = result.scalars().first()
-
-                    if subscription is None:
-                        ...
-
+                    # Находим заявку и запись о работе юзера
                     application, work = await get_application_by_user(session, callback_query.message.chat.id)
 
+                    # Меняем состояние
                     application.in_working = False
                     user.in_working = False
 
+                    # Добавляем время закрытия заявки
                     application.close_app_time = int(time.time() * 1000)
 
                     await session.delete(work)
 
                 await session.commit()
 
+            # Удаляем сообщение с кнопки действия
             try:
                 await bot.delete_message(
                     chat_id=user.telegram_chat_id,
@@ -100,6 +103,7 @@ def load_handlers(dp, bot: Bot):
 
             sleep(3)
 
+            # Удаляем все сообщения в стейте
             await delete_state_messages(
                 state=state,
                 bot=bot,
@@ -108,6 +112,7 @@ def load_handlers(dp, bot: Bot):
 
             async with AsyncSessionLocal() as session:
                 async with session.begin():
+                    # Удаляем все сообщения, отправленные или полученные во время работы
                     await delete_message_ids(
                         session=session,
                         bot=bot,
@@ -118,6 +123,7 @@ def load_handlers(dp, bot: Bot):
 
             await state.clear()
 
+            # Показываем другие заявки
             await show_applications(
                 chat_id=callback_query.message.chat.id,
                 user_id=callback_query.from_user.id,

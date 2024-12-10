@@ -19,43 +19,55 @@ from states import States
 def load_handlers(dp, bot: Bot):
     router = Router()
 
+    # Обработчик команды /sending для начала процесса рассылки
+    # Доступен только администраторам, если пользователь не находится в другом состоянии FSM
     @router.message(F.text, Command('sending'), StateFilter(None, States.message), UserFilter(check_admin=True))
     async def load_sending(message: types.Message, state: FSMContext):
         try:
+            # Добавляем идентификатор состояния для отслеживания сообщений
             await add_state_id(
                 state=state,
                 state_name="sending_ids",
                 message_id=message.message_id
             )
 
+            # Отправляем сообщение с инструкцией ввести текст для рассылки
             await send_state_message(
                 message=message,
                 text="Введите текст рассылки",
                 state=state,
                 state_name="sending_ids"
             )
+            # Устанавливаем новое состояние FSM
             await state.set_state(States.sending_text)
         except Exception as e:
-            pass
+            print(e)
 
+    # Обработчик для ввода текста рассылки
+    # Проверяет, что пользователь — администратор, и сохраняет текст сообщения
     @router.message(States.sending_text, UserFilter(check_admin=True))
     async def read_sending_text(message: types.Message, state: FSMContext):
         try:
+            # Добавляем идентификатор состояния для отслеживания сообщений
             await add_state_id(
                 state=state,
                 state_name="sending_ids",
                 message_id=message.message_id
             )
 
+            # Получаем текст сообщения
             text = message.text
 
             if text is None:
                 raise Exception("Invalid text")
 
+            # Форматируем текст сообщения с указанием, что это сообщение от администратора
             text = "<b>Сообщение от администратора:</b>\n" + text
 
+            # Сохраняем текст в данных состояния
             await state.update_data(sending_text=text)
 
+            # Отправляем пользователю выбор способа рассылки
             await send_state_message(
                 state=state,
                 message=message,
@@ -71,10 +83,14 @@ def load_handlers(dp, bot: Bot):
                 state_name="sending_ids"
             )
             await state.set_state(States.sending_text)
+            print(e)
 
+    # Обработчик для отправки сообщения всем пользователям
+    # Проверяет, что пользователь — администратор, и выполняет рассылку
     @router.callback_query(F.data == callbacks.SEND_MESSAGE_ALL_CALLBACK, UserFilter(check_admin=True))
     async def send_message_for_all_users(callback_query: types.CallbackQuery, state: FSMContext):
         try:
+            # Извлекаем список всех пользователей, кроме инициатора рассылки и заблокированных
             async with AsyncSessionLocal() as session:
                 async with session.begin():
                     result = await session.execute(
@@ -87,12 +103,14 @@ def load_handlers(dp, bot: Bot):
 
                     chat_ids = [u.telegram_chat_id for u in users]
 
+            # Извлекаем текст рассылки из состояния
             data = await state.get_data()
             sending_text = data.get("sending_text", "")
 
             if len(sending_text) == 0:
                 raise Exception("Invalid text")
 
+            # Отправляем сообщение каждому пользователю с небольшой задержкой
             for chat_id in chat_ids:
                 sleep(0.2)
                 await bot.send_message(
@@ -101,6 +119,7 @@ def load_handlers(dp, bot: Bot):
                     parse_mode=ParseMode.HTML
                 )
 
+            # Уведомляем администратора об успешной рассылке
             await send_state_message(
                 state=state,
                 message=callback_query.message,
@@ -109,13 +128,17 @@ def load_handlers(dp, bot: Bot):
                 state_name="sending_ids"
             )
 
+            # Сбрасываем состояние FSM
             await reset_state(state=state)
         except Exception as e:
             print(e)
 
+    # Обработчик для выбора города перед отправкой сообщения
+    # Загружает список всех доступных локаций
     @router.callback_query(F.data == callbacks.SELECT_SENDING_CITY_CALLBACK, UserFilter(check_admin=True))
     async def select_sending_city(callback_query: types.CallbackQuery, state: FSMContext):
         try:
+            # Извлекаем список всех городов из базы данных
             async with AsyncSessionLocal() as session:
                 async with session.begin():
                     result = await session.execute(
@@ -123,43 +146,52 @@ def load_handlers(dp, bot: Bot):
                     )
                     cities_db = result.scalars().all()
 
+                    # Формируем текст со списком доступных городов
                     text = "<b>Введите назавания локаций через запятую и пробел, вот списко всех локаций:</b>\n"
 
                     for i, city in enumerate(cities_db, start=1):
                         text += f"{i}. {city.city}\n"
 
+                    # Отправляем текст пользователю
                     await send_state_message(
                         state=state,
                         message=callback_query.message,
                         parse_mode=ParseMode.HTML,
                         text=text
                     )
+                    # Устанавливаем состояние для выбора локаций
                     await state.set_state(States.sending_locations)
         except Exception as e:
             print(e)
 
+    # Обработчик для чтения выбранных локаций и отправки сообщения только пользователям в этих городах
     @router.message(States.sending_locations, UserFilter(check_admin=True))
     async def read_sending_locations(message: types.Message, state: FSMContext):
         try:
+            # Добавляем идентификатор состояния для отслеживания сообщений
             await add_state_id(
                 state=state,
                 state_name="sending_ids",
                 message_id=message.message_id
             )
 
+            # Получаем текст с введёнными локациями
             text = message.text
 
             if text is None:
                 raise Exception("Invalid text")
 
+            # Извлекаем текст рассылки из состояния
             data = await state.get_data()
             sending_text = data.get("sending_text", "")
 
             if len(sending_text) == 0:
                 raise Exception("Invalid text")
 
+            # Разделяем локации на список
             locations = text.split(", ")
 
+            # Извлекаем пользователей, которые находятся в указанных локациях
             async with AsyncSessionLocal() as session:
                 async with session.begin():
                     result = await session.execute(
@@ -173,6 +205,7 @@ def load_handlers(dp, bot: Bot):
 
                     chat_ids = [u.telegram_user_id for u in users]
 
+            # Отправляем сообщение каждому пользователю из выбранных городов
             for chat_id in chat_ids:
                 sleep(0.2)
                 await bot.send_message(
@@ -181,6 +214,7 @@ def load_handlers(dp, bot: Bot):
                     parse_mode=ParseMode.HTML
                 )
 
+            # Уведомляем администратора об успешной рассылке
             await send_state_message(
                 state=state,
                 message=message,
@@ -189,8 +223,9 @@ def load_handlers(dp, bot: Bot):
                 keyboard=kb.create_delete_admin_messages_keyboard()
             )
 
+            # Сбрасываем состояние FSM
             await reset_state(state=state)
         except Exception as e:
-            pass
+            print(e)
 
     dp.include_router(router)

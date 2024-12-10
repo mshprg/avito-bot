@@ -11,9 +11,11 @@ from models.user import User
 
 class UserFilter(BaseFilter):
     check_admin: bool = False
+    check_root: bool = False
 
-    def __init__(self, check_admin: bool = False):
+    def __init__(self, check_admin: bool = False, check_root: bool = False):
         self.check_admin = check_admin
+        self.check_root = check_root
 
     async def __call__(self, obj: types.Update, state: FSMContext) -> bool:
         if isinstance(obj, types.Message) or isinstance(obj, types.CallbackQuery):
@@ -48,6 +50,9 @@ class UserFilter(BaseFilter):
                             message=m,
                             text="Вы должны иметь права администратора"
                         )
+                        return False
+
+                    if self.check_root and user_id not in config.ROOT_USER_IDS:
                         return False
 
                     return True

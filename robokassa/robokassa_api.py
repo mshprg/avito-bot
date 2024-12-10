@@ -3,7 +3,6 @@ import hashlib
 import json
 import urllib
 from urllib import parse
-from urllib.parse import urlparse
 
 
 def calculate_signature(*args) -> str:
@@ -35,7 +34,6 @@ def check_signature_result(
 
 
 # Формирование URL переадресации пользователя на оплату.
-
 def generate_payment_link(
     merchant_login: str,  # Merchant login
     merchant_password_1: str,  # Merchant password
@@ -43,8 +41,8 @@ def generate_payment_link(
     number: int,  # Invoice number
     description: str,  # Description of the purchase
     receipt,
-    is_test = 0,
-    robokassa_payment_url = 'https://auth.robokassa.ru/Merchant/Index.aspx',
+    is_test=0,
+    robokassa_payment_url='https://auth.robokassa.ru/Merchant/Index.aspx',
 ) -> str:
     """URL for redirection of the customer to the service.
     """
@@ -76,7 +74,6 @@ def generate_payment_link(
 
 
 # Получение уведомления об исполнении операции (ResultURL).
-
 async def result_payment(merchant_password_2: str, request) -> str:
     """Verification of notification (ResultURL).
     :param request: HTTP parameters.
@@ -86,14 +83,12 @@ async def result_payment(merchant_password_2: str, request) -> str:
     number = param_request['InvId']
     signature = param_request['SignatureValue']
 
-
     if check_signature_result(number, cost, signature, merchant_password_2):
         return f'OK{param_request["InvId"]}'
     return "bad sign"
 
 
 # Проверка параметров в скрипте завершения операции (SuccessURL).
-
 async def check_success_payment(merchant_password_1: str, request) -> str:
     """ Verification of operation parameters ("cashier check") in SuccessURL script.
     :param request: HTTP parameters
@@ -102,7 +97,6 @@ async def check_success_payment(merchant_password_1: str, request) -> str:
     cost = param_request['OutSum']
     number = param_request['InvId']
     signature = param_request['SignatureValue']
-
 
     if check_signature_result(number, cost, signature, merchant_password_1):
         return "Thank you for using our service"

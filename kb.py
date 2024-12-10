@@ -82,10 +82,6 @@ def create_back_to_apps_keyboard():
     return generate_inline_markup([['Отказаться от заявки', callbacks.BACK_TO_APPS_CALLBACK]])
 
 
-def create_exactly_back_keyboard():
-    return generate_inline_markup([['Я точно хочу отказаться', callbacks.EXACTLY_BACK_CALLBACK]])
-
-
 def create_application_actions_keyboard():
     return generate_inline_markup([
         ['Завешил работу', callbacks.FINISH_APPLICATION_CALLBACK],
@@ -104,24 +100,6 @@ def create_finish_application_keyboard():
     return generate_inline_markup([
         ['Я получил оплату, завершить работу', callbacks.EXACTLY_FINISH_CALLBACK],
         ['Назад', callbacks.BACK_TO_APPLICATION_CALLBACK]
-    ])
-
-
-def create_paid_comm_keyboard():
-    return generate_inline_markup([
-        ['Я оплатил', callbacks.PAID_COMM_CALLBACK],
-    ])
-
-
-def create_activate_admin_keyboard():
-    return generate_inline_markup([
-        ['Активировать права', callbacks.ACTIVATE_ADMIN_CALLBACK],
-    ])
-
-
-def create_deactivate_admin_keyboard():
-    return generate_inline_markup([
-        ['Деактивировать права', callbacks.DEACTIVATE_ADMIN_CALLBACK],
     ])
 
 
@@ -145,17 +123,9 @@ def create_manage_cities_keyboard():
     ])
 
 
-def create_manage_shop_keyboard():
+def create_manage_tariff_keyboard():
     return generate_inline_markup([
-        ['Изменить цену подписки на 30 дней', callbacks.CHANGE_30_CALLBACK],
-        ['Удалить сообщения для администратора', callbacks.DELETE_MESSAGES_CALLBACK],
-    ])
-
-
-def create_manage_requisites_keyboard():
-    return generate_inline_markup([
-        ['Изменить номер карты', callbacks.CHANGE_REQUISITES_CALLBACK],
-        ['Удалить сообщения для администратора', callbacks.DELETE_MESSAGES_CALLBACK],
+        ['Изменить цену тарифа', callbacks.CHANGE_TARIFF_CALLBACK],
     ])
 
 
@@ -165,15 +135,9 @@ def create_add_city_keyboard():
     ])
 
 
-def create_close_application_keyboard():
-    return generate_inline_markup([
-        ['Закрыть заявку', callbacks.CLOSE_APPLICATION_CALLBACK],
-    ])
-
-
 def create_list_confirmations_keyboard():
     return generate_inline_markup([
-        ['Отправить сообщение с действиями', callbacks.APPROVED_CONF_CALLBACK],
+        ['Подтвердить покупку', callbacks.APPROVED_CONF_CALLBACK],
     ])
 
 
@@ -186,13 +150,13 @@ def create_select_sending_keyboard():
 
 def create_pay_subscribe_keyboard():
     return generate_inline_markup([
-        ['Оплатить доступ', callbacks.BUY_SUBSCRIBE_CALLBACK],
+        ['Оплатить тариф', callbacks.BUY_SUBSCRIBE_CALLBACK],
     ])
 
 
 def create_admin_subscribe_keyboard():
     return generate_inline_markup([
-        ['Продлить подписку бесплатно', callbacks.BUY_ADMIN_SUBSCRIBE_CALLBACK],
+        ['Купить тариф бесплатно', callbacks.BUY_ADMIN_SUBSCRIBE_CALLBACK],
     ])
 
 

@@ -1,9 +1,11 @@
 import time
 
-from sqlalchemy import select
+from aiogram.enums import ParseMode
+from sqlalchemy import select, and_
 
 from models.payment import Payment
 from models.subscription import Subscription
+from models.user import User
 from robokassa.robokassa_api import result_payment, generate_payment_link
 import config
 from aiohttp import web
@@ -13,20 +15,26 @@ from db import AsyncSessionLocal
 handled_operations = []
 
 
-async def create_payment_link(receipt, amount, phone, telegram_user_id):
+# Создание ссылки на оплату
+async def create_payment_link(receipt, amount, phone, duration, description, telegram_user_id):
     try:
         async with AsyncSessionLocal() as session:
             async with session.begin():
+                # Находим все платежи
                 result = await session.execute(
                     select(Payment)
                 )
                 payments = result.scalars().all()
 
+                # Генерируем id
                 next_id = str(len(payments) + 1)
 
+                # Генерируем номер
                 number = int(next_id + (7 - len(next_id)) * "0")
 
                 phone.replace("+", "")
+
+                # Создаем ссылку
                 payment_link = generate_payment_link(
                     merchant_login=config.MERCHANT_LOGIN,
                     merchant_password_1=config.MERCHANT_PASSWORD_1,
@@ -34,15 +42,18 @@ async def create_payment_link(receipt, amount, phone, telegram_user_id):
                     number=number,
                     description=phone.replace("+", ""),
                     receipt=receipt,
-                    is_test=0
+                    is_test=1
                 )
 
+                # Создаем платеж в бд со статусом ожидания
                 payment = Payment(
                     telegram_user_id=telegram_user_id,
                     amount=amount,
                     created=int(time.time() * 1000),
                     number=number,
                     status=2,
+                    duration=duration,
+                    description=description,
                 )
 
                 session.add(payment)
@@ -56,55 +67,97 @@ async def create_payment_link(receipt, amount, phone, telegram_user_id):
     return None
 
 
+# Функция обработки результата платежа, данные приходят из робокассы через вебхук
 async def check_status_payment(request):
     from main import bot
     try:
+        # Проверяем подпись
         res = await result_payment(config.MERCHANT_PASSWORD_2, request)
         if res == "bad sign":
             print("error - - - - - - - -- - - - \n-\n-\n-\n-\n")
             return
+        # Получаем номер платежа
         number = int(res.replace("OK", ""))
+        # Проверяем есть ли такой платеж в массиве обработанных,
+        # проверяем для того чтобы дважды не обработать один и тот же платеж
         if number in handled_operations:
             return
         else:
             handled_operations.append(number)
         async with (AsyncSessionLocal() as session):
             async with session.begin():
+                # Получаем платеж
                 result = await session.execute(
                     select(Payment).filter(Payment.number == number)
                 )
                 payment = result.scalars().first()
 
-                user_id = payment.telegram_user_id
-
+                # Получаем юзера
                 result = await session.execute(
-                    select(Subscription).filter(Subscription.telegram_user_id == user_id)
+                    select(User).filter(User.telegram_user_id == payment.telegram_user_id)
+                )
+                user = result.scalars().first()
+
+                # Получаем подписку на тариф
+                result = await session.execute(
+                    select(Subscription).filter(
+                        and_(
+                            Subscription.telegram_user_id == payment.telegram_user_id,
+                            Subscription.duration == payment.duration,
+                        )
+                    )
                 )
                 subscription = result.scalars().first()
 
+                # Если подписки нет, то создаем новую
                 if subscription is None:
                     subscription = Subscription(
-                        telegram_user_id=user_id,
-                        status=2,
-                        end_time=int(time.time() * 1000) + 86400000 * 30,
+                        telegram_user_id=payment.telegram_user_id,
+                        end_time=int(time.time() * 1000) + 86400000 * 30 * payment.duration,
+                        duration=payment.duration,
+                        description=payment.description,
                     )
                     session.add(subscription)
-                else:
-                    if subscription.end_time == -1:
-                        subscription.end_time = int(time.time() * 1000) + 86400000 * 30
-                    else:
-                        subscription.end_time += 86400000 * 30
-                    subscription.status = 0
+                else:  # Если подписка есть, то продлеваем её
+                    subscription.end_time += 86400000 * 30 * payment.duration
 
+                # Меняем статус платежа на успешно
                 payment.status = 0
 
+                # Отправляем пользователю сообщение
                 await bot.send_message(
-                    chat_id=user_id,
-                    text="Доступ продлён"
+                    chat_id=payment.telegram_user_id,
+                    text="Доступ предоставлен"
                 )
 
+                # Получаем всех админов
+                result = await session.execute(
+                    select(User).filter(
+                        and_(
+                            User.admin == True,
+                            User.telegram_user_id.in_(config.ROOT_USER_IDS),
+                        )
+                    )
+                )
+                admins = result.scalars().all()
+
+                admin_text = (f"Пользователь <b>{user.name}</b> приобрёл тариф\n"
+                              f"<b>Длительность (месяцев):</b> {payment.duration}\n"
+                              f"<b>Описание:</b> {payment.description}\n"
+                              f"<b>Сумма оплаты:</b> {payment.amount} руб.\n"
+                              f"<b>Номер телефона:</b> {user.phone}")
+
+                # Сообщаем админам о том что пользователь приобрёл подписку на тариф
+                for admin in admins:
+                    await bot.send_message(
+                        chat_id=admin.telegram_chat_id,
+                        text=admin_text,
+                        parse_mode=ParseMode.HTML
+                    )
+
             await session.commit()
+
+        return web.json_response({"ok": True})
     except Exception as e:
         print("Status payment error:", e)
-
-    return web.json_response({"ok": True})
+        return web.json_response({"ok": False})

@@ -23,6 +23,8 @@ class States(StatesGroup):
     unban = State()
     sending_text = State()
     sending_locations = State()
+    visible_tariffs = State()
+    current_admin_tariff = State()
 
     ids = State()
     admin_ids = State()

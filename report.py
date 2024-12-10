@@ -78,7 +78,6 @@ async def send_report(report, users, text_none):
 
 
 async def collect_data(session, start_unix, end_unix):
-
     df_app = await collect_application_data(session, start_unix, end_unix)
 
     df_user = await collect_user_data(session, start_unix, end_unix)

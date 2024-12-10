@@ -15,24 +15,31 @@ from states import States
 def load_handlers(dp, bot: Bot):
     router = Router()
 
+    # Получаем список зарегистрированных юзеров
     @router.message(Command('users'), StateFilter(None, States.message), UserFilter(check_admin=True))
     async def show_users(message: types.Message, state: FSMContext):
         try:
+            # Сохраняем ID текущего сообщения в состоянии для последующего удаления
             await add_state_id(
                 state=state,
                 state_name="user_ids",
                 message_id=message.message_id
             )
+
+            # Открываем сессию с базой данных для извлечения всех пользователей
             async with AsyncSessionLocal() as session:
                 async with session.begin():
+                    # Выполняем запрос к таблице пользователей
                     result = await session.execute(
                         select(User)
                     )
                     users = result.scalars().all()
 
+                    # Если пользователи не найдены, ничего не делаем
                     if len(users) == 0:
                         return
 
+                    # Отправляем сообщение с общим количеством пользователей
                     await send_state_message(
                         message=message,
                         text=f"Общее количество пользователей: <b>{len(users)}</b>",
@@ -41,8 +48,10 @@ def load_handlers(dp, bot: Bot):
                         state_name="user_ids"
                     )
 
+                    # Перебираем всех пользователей и отправляем информацию о каждом
                     for user in users:
                         dop = ""
+                        # Отмечаем в списке аккаунт с которого запросили список
                         if user.telegram_user_id == message.from_user.id:
                             dop = "<b>|- - - Ваш аккаунт - - -|</b>\n"
                         text = dop + (f"<b>Имя: </b>{user.name}\n"
@@ -60,6 +69,7 @@ def load_handlers(dp, bot: Bot):
                             state_name="user_ids"
                         )
 
+            # Отправляем сообщение с возможными действиями для администратора
             await send_state_message(
                 state=state,
                 text="Действия",
@@ -76,20 +86,26 @@ def load_handlers(dp, bot: Bot):
                 state_name="user_ids",
             )
 
+    # Команда получения информации об одном юзере
     @router.message(Command('user'), StateFilter(None, States.message), UserFilter(check_admin=True))
     async def show_user(message: types.Message, state: FSMContext):
         try:
+            # Сохраняем ID текущего сообщения в состоянии для последующего удаления
             await add_state_id(
                 state=state,
                 state_name="user_ids",
                 message_id=message.message_id
             )
+
+            # Запрашиваем у администратора номер телефона пользователя
             await send_state_message(
                 state=state,
                 text="Введите номер телефона пользователя",
                 message=message,
                 state_name="user_ids",
             )
+
+            # Устанавливаем состояние для ожидания ввода номера телефона
             await state.set_state(States.user_ids)
         except Exception as e:
             await send_state_message(
@@ -98,27 +114,32 @@ def load_handlers(dp, bot: Bot):
                 message=message,
                 state_name="user_ids",
             )
-            await state.set_state(States.user_ids)
             print(e)
 
+    # Ожидание отправки сообщения с номером
     @router.message(States.user_ids, UserFilter(check_admin=True))
     async def read_user_phone(message: types.Message, state: FSMContext):
         try:
+            # Сохраняем ID текущего сообщения в состоянии для последующего удаления
             await add_state_id(
                 state=state,
                 state_name="user_ids",
                 message_id=message.message_id
             )
 
+            # Извлекаем номер телефона из сообщения администратора
             phone = message.text
 
+            # Открываем сессию с базой данных для поиска пользователя
             async with AsyncSessionLocal() as session:
                 async with session.begin():
+                    # Выполняем запрос к таблице пользователей по номеру телефона
                     result = await session.execute(
                         select(User).filter(User.phone == phone)
                     )
                     user = result.scalars().first()
 
+                    # Если пользователь не найден, уведомляем администратора
                     if user is None:
                         await send_state_message(
                             state=state,
@@ -129,6 +150,7 @@ def load_handlers(dp, bot: Bot):
                         await state.set_state(States.user_ids)
                         return
 
+                    # Формируем текст с данными о пользователе
                     text = (f"<b>Имя: </b>{user.name}\n"
                             f"<b>Номер телефона: </b>{user.phone}\n"
                             f"<b>ID пользователя: </b>{user.telegram_user_id}\n"
@@ -137,6 +159,7 @@ def load_handlers(dp, bot: Bot):
                             f"<b>Блокировка: </b>{'заблокирован' if user.banned else 'разблокирован'}\n"
                             f"<b>Работа: </b>{'работает над заявкой' if user.in_working else 'не работает'}")
 
+                    # Отправляем данные о пользователе администратору
                     await send_state_message(
                         message=message,
                         text=text,
@@ -146,7 +169,8 @@ def load_handlers(dp, bot: Bot):
                         keyboard=kb.create_delete_admin_messages_keyboard()
                     )
 
-                    await reset_state(state)
+            # Сбрасываем состояние после успешной обработки
+            await reset_state(state)
         except Exception as e:
             print(e)
             await send_state_message(

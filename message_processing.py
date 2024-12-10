@@ -22,24 +22,6 @@ async def delete_messages(bot, ids, chat_id):
         print(e)
 
 
-async def delayed_execution(func, *args, **kwargs):
-    await asyncio.sleep(3)
-    await func(*args, **kwargs)
-
-
-async def try_send_message(func, count=5, **kwargs):
-    res = None
-    try:
-        res = await func(**kwargs)
-    except Exception as e:
-        count -= 1
-        print(e)
-        sleep(4)
-        if count > 0:
-            res = await try_send_message(func=func, count=count, **kwargs)
-    return res
-
-
 def split_list(arr, chunk_size):
     return [arr[i:i + chunk_size] for i in range(0, len(arr), chunk_size)]
 

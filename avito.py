@@ -20,6 +20,7 @@ COUNT_OTHER_MESSAGES = 7
 token_info = None
 
 
+# Получение токена авито
 def get_token_info():
     global token_info
     if token_info is None or token_info['expires_in'] >= time():
@@ -38,6 +39,7 @@ def get_token_info():
     return token_info
 
 
+# Получание списка чатов авито
 def get_chats(user_id):
     get_token_info()
     get_chats_url = f'https://api.avito.ru/messenger/v2/accounts/{user_id}/chats'
@@ -61,6 +63,7 @@ def get_chats(user_id):
     return chats_data
 
 
+# Получение сообщений из чата авито
 def get_messages(user_id, chat_id):
     get_token_info()
     get_messages_url = f'https://api.avito.ru/messenger/v3/accounts/{user_id}/chats/{chat_id}/messages'
@@ -80,6 +83,7 @@ def get_messages(user_id, chat_id):
     return messages_data
 
 
+# Получение информации о чате авито
 def get_chat(user_id, chat_id):
     get_token_info()
     get_chat_url = f'https://api.avito.ru/messenger/v2/accounts/{user_id}/chats/{chat_id}'
@@ -99,6 +103,7 @@ def get_chat(user_id, chat_id):
     return chat_data
 
 
+# Отправка сообщения в чате авито
 async def send_message(user_id, chat_id, text):
     return
     
@@ -128,6 +133,7 @@ async def send_message(user_id, chat_id, text):
     return send_data
 
 
+# Получаение имени пользователя собеседника из chat_info
 def get_username(chat_info, user_id):
     users = chat_info['users']
     for u in users:
@@ -152,6 +158,7 @@ def find_handled_message(message_id, chat_id):
     return False
 
 
+# Удаляет записи сообщений из application_chat_ids, если счетчик <= 0
 def drop_old_handled_messages(message_id, chat_id):
     for i in range(len(application_chat_ids)):
         try:
@@ -163,10 +170,12 @@ def drop_old_handled_messages(message_id, chat_id):
             print("drop_old_handled_messages error:", e)
 
 
+# Обработка вебхука сообщений с авито
 async def handle_webhook_message(request):
     get_token_info()
     data = await request.json()
 
+    # Получаем данные сообщения
     value = data.get('payload')['value']
 
     m_id = value['id']
@@ -175,6 +184,7 @@ async def handle_webhook_message(request):
     author_id = value['author_id']
     created = int(time() * 1000)
     m_type = value['type']
+    # Определяем тип контента сообщения
     if m_type == 'text':
         content = value['content']['text']
     elif m_type == 'image':
@@ -182,12 +192,11 @@ async def handle_webhook_message(request):
     else:
         content = "Unsupported type of file"
 
+    # Если нет id чата, то не обрабатывем данные
     if chat_id is None or chat_id == '0':
         return
 
-    for a in application_chat_ids:
-        print(a)
-
+    # Если сообщения не обрабатывали, то добавляем его в массив обработанных
     if not find_handled_message(m_id, chat_id):
         application_chat_ids.append({
             'message_id': m_id,
@@ -195,7 +204,7 @@ async def handle_webhook_message(request):
             'counter': COUNT_OTHER_MESSAGES,
         })
         drop_old_handled_messages(m_id, chat_id)
-    else:
+    else:  # Если обрабатывали, то меняем счетчик
         for i in range(len(application_chat_ids)):
             try:
                 if application_chat_ids[i]['message_id'] != m_id and application_chat_ids[i]['chat_id'] != chat_id:
@@ -204,23 +213,29 @@ async def handle_webhook_message(request):
                 print("Reset counter for old webhook:", e)
         return
 
-    d = {'is_f': True}
+    d = {'is_new': True}
     async with AsyncSessionLocal() as session:
         async with session.begin():
+            # Получаем заявки по id чата авито
             result = await session.execute(
                 select(Application).filter(Application.avito_chat_id == chat_id)
             )
             application_db = result.scalars().first()
 
+            # Если заявка сущетвут в бд, то ставим флаг is_new = Flase
             if application_db is not None:
-                d['is_f'] = False
+                d['is_new'] = False
 
-    if d['is_f']:
+    # Если заявка новая
+    if d['is_new']:
 
+        # Получаем список сообщений и считаем кол-во сообщений от собеседника
         messages = get_messages(user_id, chat_id)['messages']
         count_messages = count_author_messages(messages, author_id)
 
-        if count_messages <= 1 and author_id != user_id:
+        # Чат считается новым если кол-во сообщений было менее или равно 1 и не от нас
+        if count_messages <= 1000 and author_id != user_id:
+            # Создаем новую заявку
             await add_new_application(
                 user_id=user_id,
                 chat_id=chat_id,
@@ -231,6 +246,7 @@ async def handle_webhook_message(request):
                 created=created
             )
     else:
+        # Обрабатываем новое сообщение в заявке
         await send_user_message(
             user_id=user_id,
             chat_id=chat_id,
@@ -245,20 +261,25 @@ async def handle_webhook_message(request):
     return web.json_response({"ok": True})
 
 
+# Отправка сообщения с авито в соответсвующий чат авито
 async def send_user_message(user_id, chat_id, m_type, content, author_id, created):
+    # Если сообщения не от автора объявления
     if int(user_id) != int(author_id):
         async with AsyncSessionLocal() as session:
             async with session.begin():
+                # Получаем заявку
                 result = await session.execute(
                     select(Application).filter(Application.avito_chat_id == chat_id)
                 )
                 application_db = result.scalars().first()
 
+                # Меняем данные о последнем сообщении
                 application_db.last_message_time = int(created)
                 application_db.last_message_text = content
 
                 telegram_user_id = application_db.working_user_id
 
+                # Получаем пользователя, который работает над заявкой
                 result = await session.execute(
                     select(User).filter(and_(
                         User.telegram_user_id == telegram_user_id,
@@ -267,6 +288,7 @@ async def send_user_message(user_id, chat_id, m_type, content, author_id, create
                 )
                 user = result.scalars().first()
 
+                # Если над заявкой ведется работа, то отправляем сообщение юзеру
                 if user is not None and user.in_working:
                     if m_type == 'text':
                         m = await main.bot.send_message(
@@ -295,6 +317,7 @@ async def send_user_message(user_id, chat_id, m_type, content, author_id, create
             await session.commit()
 
 
+# Добавление новой заявки
 async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id, created):
 
     chat = get_chat(user_id, chat_id)
@@ -381,6 +404,7 @@ async def add_new_application(user_id, chat_id, m_id, m_type, content, author_id
         print("New application has been added")
 
 
+# Регистрация вебхука в авито
 async def register_webhook():
     url = "https://api.avito.ru/messenger/v3/webhook"
     get_token_info()
@@ -405,6 +429,7 @@ async def register_webhook():
                 print("Failed to register webhook", response_text)
 
 
+# Запуск сервера
 async def start_avito_webhook(webhook_function, robokassa_function):
     await register_webhook()
     app = web.Application()
