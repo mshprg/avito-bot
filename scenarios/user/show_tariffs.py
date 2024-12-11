@@ -203,6 +203,15 @@ def load_handlers(dp, bot: Bot):
 
                     tariff_dict = tariff.to_dict()
 
+                    # Подбираем окончание
+                    lst_text = 'ев'
+                    lst_number = int(str(tariff_dict['duration'])[-1])
+
+                    if lst_number == 1:
+                        lst_text = ''
+                    elif 1 < lst_number <= 4:
+                        lst_text = 'а'
+
                     # Создаем чек
                     receipt = {
                         "items": [
@@ -212,7 +221,7 @@ def load_handlers(dp, bot: Bot):
                                 "sum": additional_payment,
                                 "cost": additional_payment,
                                 "payment_method": "full_payment",
-                                "payment_object": "service",
+                                "payment_object": f"Оплата подписки на {tariff_dict['duration']} месяц{lst_text}",
                                 "tax": "none"
                             }
                         ]

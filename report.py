@@ -192,18 +192,15 @@ async def collect_user_data(session, start_unix, end_unix):
             else:
                 pay_date.append("-")
 
-            if subscription.end_time > int(time.time() * 1000):
-
+            if subscription and subscription.end_time > int(time.time() * 1000):
                 is_payed.append("ДА")
 
                 next_pay_date.append(to_date(subscription.end_time, only_date=True))
 
-                if subscription.status == 3:
+                if subscription.duration == 0:
                     pay_price.append(0)
-                elif subscription.status == 0:
-                    pay_price.append(last_payment.amount if last_payment else 0)
                 else:
-                    pay_price.append("-")
+                    pay_price.append(last_payment.amount if last_payment else 0)
             else:
                 is_payed.append("НЕТ")
                 next_pay_date.append("-")
