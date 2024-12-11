@@ -18,7 +18,7 @@ from states import States
 def load_handlers(dp, bot: Bot):
     router = Router()
 
-    @router.message(Command('report'), StateFilter(None, States.message), UserFilter(check_admin=True))
+    @router.message(Command('report'), StateFilter(None, States.message), UserFilter(check_admin=True, check_root=True))
     async def generate_report(message: types.Message, state: FSMContext):
         try:
             async with AsyncSessionLocal() as session:
