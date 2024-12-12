@@ -216,12 +216,12 @@ def load_handlers(dp, bot: Bot):
                     receipt = {
                         "items": [
                             {
-                                "name": f"Тариф {tariff_dict['duration']}",
+                                "name": f"Оплата подписки на {tariff_dict['duration']} месяц{lst_text}",
                                 "quantity": 1,
                                 "sum": additional_payment,
                                 "cost": additional_payment,
                                 "payment_method": "full_payment",
-                                "payment_object": f"Оплата подписки на {tariff_dict['duration']} месяц{lst_text}",
+                                "payment_object": "service",
                                 "tax": "none"
                             }
                         ]
