@@ -1,3 +1,4 @@
+import random
 import time
 
 from aiogram.enums import ParseMode
@@ -20,17 +21,9 @@ async def create_payment_link(receipt, amount, phone, duration, description, tel
     try:
         async with AsyncSessionLocal() as session:
             async with session.begin():
-                # Находим все платежи
-                result = await session.execute(
-                    select(Payment)
-                )
-                payments = result.scalars().all()
-
-                # Генерируем id
-                next_id = str(len(payments) + 1)
 
                 # Генерируем номер
-                number = int(next_id + (7 - len(next_id)) * "0")
+                number = await generate_unique_number(session)
 
                 phone.replace("+", "")
 
@@ -161,3 +154,18 @@ async def check_status_payment(request):
     except Exception as e:
         print("Status payment error:", e)
         return web.json_response({"ok": False})
+
+
+# Генерация случайного числа
+async def generate_unique_number(session):
+    while True:
+        # Генерируем случайное семизначное число с ведущими нулями
+        random_number = random.randint(0, 9999999)
+
+        # Проверяем, существует ли оно в базе данных
+        exists = (await session.execute(
+            select(Payment).filter(Payment.number == random_number)
+        )).scalars().first()
+
+        if not exists:
+            return random_number
