@@ -91,37 +91,16 @@ async def check_status_payment(request):
                 )
                 user = result.scalars().first()
 
-                # Получаем подписку на тариф
-                result = await session.execute(
-                    select(Subscription).filter(
-                        and_(
-                            Subscription.telegram_user_id == payment.telegram_user_id,
-                            Subscription.duration == payment.duration,
-                        )
-                    )
+                subscription = Subscription(
+                    telegram_user_id=payment.telegram_user_id,
+                    end_time=int(time.time() * 1000) + 86400000 * 30 * payment.duration,
+                    duration=payment.duration,
+                    description=payment.description,
                 )
-                subscription = result.scalars().first()
-
-                # Если подписки нет, то создаем новую
-                if subscription is None:
-                    subscription = Subscription(
-                        telegram_user_id=payment.telegram_user_id,
-                        end_time=int(time.time() * 1000) + 86400000 * 30 * payment.duration,
-                        duration=payment.duration,
-                        description=payment.description,
-                    )
-                    session.add(subscription)
-                else:  # Если подписка есть, то продлеваем её
-                    subscription.end_time += 86400000 * 30 * payment.duration
+                session.add(subscription)
 
                 # Меняем статус платежа на успешно
                 payment.status = 0
-
-                # Отправляем пользователю сообщение
-                await bot.send_message(
-                    chat_id=payment.telegram_user_id,
-                    text="Доступ предоставлен"
-                )
 
                 # Получаем всех админов
                 result = await session.execute(
@@ -134,21 +113,35 @@ async def check_status_payment(request):
                 )
                 admins = result.scalars().all()
 
+                # Переводим всё в словари
+                admins_dict = []
+                for admin in admins:
+                    admins_dict.append(admin.to_dict())
+
                 admin_text = (f"Пользователь <b>{user.name}</b> приобрёл тариф\n"
                               f"<b>Длительность (месяцев):</b> {payment.duration}\n"
                               f"<b>Описание:</b> {payment.description}\n"
                               f"<b>Сумма оплаты:</b> {payment.amount} руб.\n"
                               f"<b>Номер телефона:</b> {user.phone}")
 
-                # Сообщаем админам о том что пользователь приобрёл подписку на тариф
-                for admin in admins:
-                    await bot.send_message(
-                        chat_id=admin.telegram_chat_id,
-                        text=admin_text,
-                        parse_mode=ParseMode.HTML
-                    )
+                payment_dict = payment.to_dict()
 
             await session.commit()
+
+        # Отправляем пользователю сообщение
+        await bot.send_message(
+            chat_id=payment_dict['telegram_user_id'],
+            text="Доступ предоставлен"
+        )
+
+        # Сообщаем админам о том что пользователь приобрёл подписку на тариф
+        for admin in admins_dict:
+            time.sleep(1)
+            await bot.send_message(
+                chat_id=admin['telegram_chat_id'],
+                text=admin_text,
+                parse_mode=ParseMode.HTML
+            )
 
         return web.json_response({"ok": True})
     except Exception as e:

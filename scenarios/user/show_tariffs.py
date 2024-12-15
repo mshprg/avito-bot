@@ -35,8 +35,12 @@ def load_handlers(dp, bot: Bot):
                 async with session.begin():
                     # Получем все подписки пользователя
                     result = await session.execute(
-                        select(Subscription).filter(Subscription.telegram_user_id == message.from_user.id)
-                        .order_by(asc(Subscription.duration))
+                        select(Subscription).filter(
+                            and_(
+                                Subscription.telegram_user_id == message.from_user.id,
+                                Subscription.end_time > int(time.time() * 1000)
+                            )
+                        )
                     )
                     subscriptions = result.scalars().all()
 
@@ -101,29 +105,28 @@ def load_handlers(dp, bot: Bot):
                     else:
                         keyboard = kb.create_pay_subscribe_keyboard()
 
-                    if len(subscriptions) == 0:
-                        # Выводим все доступные тарифы
-                        for tariff in tariffs:
-                            text = f"<b>Длительность (месяцы):</b> {tariff.duration}\n"
-                            text += f"<b>Описание:</b> {tariff.description}\n"
-                            text += f"<b>Цена:</b> {tariff.price} руб."
+                    # Выводим все доступные тарифы
+                    for tariff in tariffs:
+                        text = f"<b>Длительность (месяцы):</b> {tariff.duration}\n"
+                        text += f"<b>Описание:</b> {tariff.description}\n"
+                        text += f"<b>Цена:</b> {tariff.price} руб."
 
-                            if tariff.duration > 1:
-                                text += f"\n<b>Стоимость месяца:</b> {round(tariff.price / tariff.duration)} руб."
+                        if tariff.duration > 1:
+                            text += f"\n<b>Стоимость месяца:</b> {round(tariff.price / tariff.duration)} руб."
 
-                            m = await send_state_message(
-                                state=state,
-                                message=message,
-                                text=text,
-                                keyboard=keyboard,
-                                state_name="subscribe_ids",
-                                parse_mode=ParseMode.HTML
-                            )
+                        m = await send_state_message(
+                            state=state,
+                            message=message,
+                            text=text,
+                            keyboard=keyboard,
+                            state_name="subscribe_ids",
+                            parse_mode=ParseMode.HTML
+                        )
 
-                            visible_tariffs.append({
-                                'message_id': m.message_id,
-                                'tariff': tariff.to_dict(),
-                            })
+                        visible_tariffs.append({
+                            'message_id': m.message_id,
+                            'tariff': tariff.to_dict(),
+                        })
 
                     # Сохраняем массив соответствий message_id и tariff в стейт
                     await state.update_data(visible_tariffs=visible_tariffs)
@@ -179,8 +182,12 @@ def load_handlers(dp, bot: Bot):
 
                     # Получем все подписки пользователя
                     result = await session.execute(
-                        select(Subscription).filter(Subscription.telegram_user_id == callback_query.from_user.id)
-                        .order_by(asc(Subscription.duration))
+                        select(Subscription).filter(
+                            and_(
+                                Subscription.telegram_user_id == callback_query.from_user.id,
+                                Subscription.end_time > int(time.time() * 1000)
+                            )
+                        )
                     )
                     subscriptions = result.scalars().all()
 
@@ -188,18 +195,15 @@ def load_handlers(dp, bot: Bot):
                     if not tariff:
                         return
 
-                    sub_tariff = None
-
-                    # Если у пользователя куплен тариф большей длительности, то выходим
+                    # Если у пользователя есть активная подписка, то выходим
                     if len(subscriptions) > 0:
-                        if subscriptions[-1].duration >= tariff.duration:
-                            return
-
-                        # Получаем тариф пользователя с самой большой длительностью из всех активных
-                        sub_tariff = next((tariff for tariff in tariffs if tariff.duration == subscriptions[-1].duration), None)
-
-                    # Находим сумму доплаты
-                    additional_payment = tariff.price - sub_tariff.price if sub_tariff else tariff.price
+                        await send_state_message(
+                            state=state,
+                            message=callback_query.message,
+                            text='У вас уже есть активная подписка, дождитесь её завершения',
+                            state_name='subscribe_ids'
+                        )
+                        return
 
                     tariff_dict = tariff.to_dict()
 
@@ -218,8 +222,8 @@ def load_handlers(dp, bot: Bot):
                             {
                                 "name": f"Оплата подписки на {tariff_dict['duration']} месяц{lst_text}",
                                 "quantity": 1,
-                                "sum": additional_payment,
-                                "cost": additional_payment,
+                                "sum": tariff_dict['price'],
+                                "cost": tariff_dict['price'],
                                 "payment_method": "full_payment",
                                 "payment_object": "service",
                                 "tax": "none"
@@ -229,7 +233,7 @@ def load_handlers(dp, bot: Bot):
 
                     # Создаем ссылку на оплату в робокассе
                     link = await create_payment_link(
-                        amount=additional_payment,
+                        amount=tariff_dict['price'],
                         phone=user.phone,
                         telegram_user_id=user.telegram_user_id,
                         receipt=receipt,
