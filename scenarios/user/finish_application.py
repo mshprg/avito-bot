@@ -1,5 +1,5 @@
 import time
-from time import sleep
+from asyncio import sleep
 
 from aiogram import Router, Bot, F, types
 from aiogram.enums import ParseMode
@@ -101,7 +101,7 @@ def load_handlers(dp, bot: Bot):
                 chat_id=callback_query.message.chat.id
             )
 
-            sleep(3)
+            await sleep(2)
 
             # Удаляем все сообщения в стейте
             await delete_state_messages(

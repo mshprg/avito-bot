@@ -1,5 +1,5 @@
 import time
-from time import sleep
+from asyncio import sleep
 
 from aiogram import Router, Bot, types, F
 from aiogram.filters import StateFilter, Command
@@ -7,7 +7,6 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy import select, and_
 
 import callbacks
-import config
 import kb
 from db import AsyncSessionLocal
 from filters import UserFilter
@@ -175,7 +174,7 @@ def load_handlers(dp, bot: Bot):
                     item_addictions = result.scalars().all()
 
                     for ad in item_addictions:
-                        sleep(0.1)
+                        await sleep(0.2)
                         try:
                             await bot.delete_message(
                                 chat_id=ad.telegram_chat_id,

@@ -1,5 +1,4 @@
-from time import sleep
-
+from asyncio import sleep
 import requests
 from aiogram import Router, Bot, F, types
 from aiogram.enums import ParseMode
@@ -44,7 +43,7 @@ def load_handlers(dp, bot: Bot):
 
                     # Уведомляем каждого пользователя о перезагрузке бота
                     for u in users:
-                        sleep(0.2)  # Небольшая задержка между отправкой сообщений, чтобы телега не ругалась
+                        await sleep(0.2)  # Небольшая задержка между отправкой сообщений, чтобы телега не ругалась
                         try:
                             await bot.send_message(
                                 text="<b>Внимание!</b>\nБот перезагружается, дождитесь сообщения о перезапуске.",
