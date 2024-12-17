@@ -1,14 +1,13 @@
 import os
 import time
 import uuid
-from time import sleep
+from asyncio import sleep
 import requests
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.types import InputMediaPhoto, BufferedInputFile, InputMediaDocument
 from sqlalchemy import select, and_
 import avito
-import config
 import kb
 from message_processing import send_state_message, send_state_media
 from models.addiction import Addiction
@@ -143,7 +142,7 @@ async def show_application(session, application, user_city, bot: Bot, chat_id, i
             session.add(addiction)
 
         # Небольшая задержка перед следующей отправкой для предотвращения перегрузки
-        sleep(0.2)
+        await sleep(0.3)
     except Exception as e:
         print(e)
 
@@ -287,7 +286,7 @@ async def show_messages_for_application(state, bot: Bot, avito_chat_id, avito_us
 
     # Обработка каждого сообщения из чата Avito
     for message in messages:
-        sleep(0.3)  # Искусственная задержка для предотвращения ограничения на частоту запросов
+        await sleep(0.3)  # Искусственная задержка для предотвращения ограничения на частоту запросов
         # Определение имени автора сообщения
         name = username if message['author_id'] == int(author_id) else "Вас"
 
@@ -366,7 +365,7 @@ async def show_new_item_for_admin(session, bot: Bot, url, item_id, avito_item_id
     text = f"<b>У вас новое объявление:</b>\n\nID: {avito_item_id}\nURL: {url}\n\n Добавьте локацию к этому объявлению"
 
     for user in users:
-        sleep(0.1)
+        await sleep(0.1)
         try:
             m = await bot.send_message(
                 chat_id=user.telegram_chat_id,
@@ -394,7 +393,7 @@ async def delete_messages_for_application(session, bot: Bot, application_id, ski
     addictions = result.scalars().all()
 
     for ad in addictions:
-        sleep(0.1)
+        await sleep(0.1)
         if ad.telegram_chat_id in skip_user_ids:
             continue
         try:
@@ -417,7 +416,7 @@ async def delete_applications_for_user(session, bot: Bot, telegram_chat_id, skip
     current_user_addictions = result.scalars().all()
 
     for ad in current_user_addictions:
-        sleep(0.1)
+        await sleep(0.1)
         if ad.application_id in skip_ids:
             continue
         try:

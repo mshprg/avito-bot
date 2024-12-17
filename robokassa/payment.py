@@ -1,5 +1,6 @@
 import random
 import time
+from asyncio import sleep
 
 from aiogram.enums import ParseMode
 from sqlalchemy import select, and_
@@ -136,12 +137,16 @@ async def check_status_payment(request):
 
         # Сообщаем админам о том что пользователь приобрёл подписку на тариф
         for admin in admins_dict:
-            time.sleep(1)
-            await bot.send_message(
-                chat_id=admin['telegram_chat_id'],
-                text=admin_text,
-                parse_mode=ParseMode.HTML
-            )
+            try:
+                await sleep(0.5)
+                await bot.send_message(
+                    chat_id=admin['telegram_chat_id'],
+                    text=admin_text,
+                    parse_mode=ParseMode.HTML
+                )
+            except Exception as e:
+                await sleep(1)
+                print(e)
 
         return web.json_response({"ok": True})
     except Exception as e:

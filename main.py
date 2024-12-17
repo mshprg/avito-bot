@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections import Counter
-from time import sleep
+from asyncio import sleep
 
 import pytz
 from aiogram import Bot, Dispatcher
@@ -150,7 +150,7 @@ async def start_bot():
         text = ("<b>Внимание!</b>\nБот был перезагружен, для корректной работы требуется очистить чат и запустить "
                 "команду <b>/reload</b>")
         try:
-            sleep(1)
+            await sleep(0.6)
             await bot.send_message(
                 chat_id=user['telegram_chat_id'],
                 text=text,

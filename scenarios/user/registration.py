@@ -1,6 +1,7 @@
 import random
 import re
 import time
+from asyncio import sleep
 
 from aiogram import Router, Bot, types, F
 from aiogram.enums import ParseMode
@@ -224,7 +225,8 @@ def load_handlers(dp, bot: Bot):
                     try:
                         # Отсылаем их на нужный номер телефона
                         await api.send_sms(int(phone.replace("+", "")), sms_text)
-                    except:
+                    except Exception as e:
+                        print("Send code error:", e)
                         # Если возникла ошибка, то сообщаем об этом
                         await send_state_message(
                             state=state,
@@ -474,6 +476,22 @@ def load_handlers(dp, bot: Bot):
                 session.add(user)
 
             await session.commit()
+
+        for admin_id in config.ROOT_USER_IDS:
+            try:
+                await sleep(0.6)
+                await bot.send_message(
+                    admin_id,
+                    f'''
+                        Новый зарегистрированный пользователь!\n
+                        {user_data.get("name")}
+                        {user_data.get("phone")}
+                        {user_data.get("city")}
+                            '''
+                )
+            except Exception as e:
+                print(e)
+                await sleep(0.6)
 
         # Удаляем все сообщения по id в стейте
         await delete_state_messages(

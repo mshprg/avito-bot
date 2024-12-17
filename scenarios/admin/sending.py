@@ -1,4 +1,4 @@
-from time import sleep
+from asyncio import sleep
 
 from aiogram import Router, Bot, F, types
 from aiogram.enums import ParseMode
@@ -112,12 +112,16 @@ def load_handlers(dp, bot: Bot):
 
             # Отправляем сообщение каждому пользователю с небольшой задержкой
             for chat_id in chat_ids:
-                sleep(0.2)
-                await bot.send_message(
-                    chat_id=chat_id,
-                    text=sending_text,
-                    parse_mode=ParseMode.HTML
-                )
+                try:
+                    await sleep(0.3)
+                    await bot.send_message(
+                        chat_id=chat_id,
+                        text=sending_text,
+                        parse_mode=ParseMode.HTML
+                    )
+                except Exception as e:
+                    print(e)
+                    await sleep(1)
 
             # Уведомляем администратора об успешной рассылке
             await send_state_message(
@@ -205,14 +209,18 @@ def load_handlers(dp, bot: Bot):
 
                     chat_ids = [u.telegram_user_id for u in users]
 
-            # Отправляем сообщение каждому пользователю из выбранных городов
+            # Отправляем сообщение каждому пользователю с небольшой задержкой
             for chat_id in chat_ids:
-                sleep(0.2)
-                await bot.send_message(
-                    chat_id=chat_id,
-                    text=sending_text,
-                    parse_mode=ParseMode.HTML
-                )
+                try:
+                    await sleep(0.3)
+                    await bot.send_message(
+                        chat_id=chat_id,
+                        text=sending_text,
+                        parse_mode=ParseMode.HTML
+                    )
+                except Exception as e:
+                    print(e)
+                    await sleep(1)
 
             # Уведомляем администратора об успешной рассылке
             await send_state_message(
