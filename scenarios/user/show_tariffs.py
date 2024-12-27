@@ -105,6 +105,7 @@ def load_handlers(dp, bot: Bot):
                     else:
                         keyboard = kb.create_pay_subscribe_keyboard()
 
+
                     # Выводим все доступные тарифы
                     for tariff in tariffs:
                         text = f"<b>Длительность (месяцы):</b> {tariff.duration}\n"
@@ -127,6 +128,14 @@ def load_handlers(dp, bot: Bot):
                             'message_id': m.message_id,
                             'tariff': tariff.to_dict(),
                         })
+                    
+                    m = await send_state_message(
+                            state=state,
+                            message=message,
+                            text=f"<b>Длительность (дни):</b> 3\n"+f"<b>Описание:</b> Пробная подписка. Выдается 1 раз сразу после регистрации.\n"+f"<b>Цена:</b> 0 руб.",
+                            state_name="subscribe_ids",
+                            parse_mode=ParseMode.HTML
+                        )
 
                     # Сохраняем массив соответствий message_id и tariff в стейт
                     await state.update_data(visible_tariffs=visible_tariffs)
