@@ -420,7 +420,7 @@ async def register_webhook():
         "url": webhook_url
     }
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         async with session.post(url, json=payload, headers=headers) as response:
             if response.status == 200:
                 print("Webhook registered successfully")
