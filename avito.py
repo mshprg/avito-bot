@@ -10,7 +10,7 @@ import requests
 from time import time
 from aiohttp import web
 from db import AsyncSessionLocal
-from message_processing import add_message_ids
+from message_processing import add_message_ids, contains_phone_number
 from models.application import Application
 from models.item import Item
 from models.user import User
@@ -150,6 +150,13 @@ def count_author_messages(messages, author_id):
             counter += 1
     return counter
 
+def phone_contains_in_messages(messages, author_id):
+    for m in messages:
+        if m['author_id'] == author_id:
+            if m['type'] == "text" and contains_phone_number(m['content'].get('text')):
+                return True
+    return False
+
 
 def find_handled_message(message_id, chat_id):
     for obj in application_chat_ids:
@@ -231,10 +238,10 @@ async def handle_webhook_message(request):
 
         # Получаем список сообщений и считаем кол-во сообщений от собеседника
         messages = get_messages(user_id, chat_id)['messages']
-        count_messages = count_author_messages(messages, author_id)
+        phone_contains = phone_contains_in_messages(messages, author_id)
 
         # Чат считается новым если кол-во сообщений было менее или равно 1 и не от нас
-        if count_messages <= 1 and author_id != user_id:
+        if phone_contains and author_id != user_id:
             # Создаем новую заявку
             await add_new_application(
                 user_id=user_id,

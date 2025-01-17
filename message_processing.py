@@ -1,5 +1,7 @@
 import asyncio
 import datetime
+import re
+
 from time import sleep
 
 from aiogram import Bot
@@ -146,3 +148,67 @@ def to_date(timestamp, only_date=False):
     else:
         formatted_date = date_utc_plus_3.strftime('%H:%M:%S %d-%m-%Y')
     return formatted_date
+
+
+def contains_phone_number(message):
+    words_to_digits = {
+        'not_multi':
+            {'ноль': 0, 'один': 1, 'два': 2, 'три': 3, 'четыре': 4,
+            'пять': 5, 'шесть': 6, 'семь': 7, 'восемь': 8, 'девять': 9,
+            'десять': 10, 'одиннадцать': 11, 'двенадцать': 12, 'тринадцать': 13,
+            'четырнадцать': 14, 'пятнадцать': 15, 'шестнадцать': 16,
+            'семнадцать': 17, 'восемнадцать': 18, 'девятнадцать': 19},
+        'multi': 
+            {
+                'двадцать': 20, 'тридцать': 30, 'сорок': 40, 'пятьдесят': 50,
+                'шестьдесят': 60, 'семьдесят': 70, 'восемьдесят': 80, 'девяносто': 90,
+                'сто': 100, 'двести': 200, 'триста': 300, 'четыреста': 400,
+                'пятьсот': 500, 'шестьсот': 600, 'семьсот': 700, 'восемьсот': 800,
+                'девятьсот': 900
+            }
+    }
+
+    def replace_words_with_digits(text):
+        # Разбиваем текст на слова
+        words = text.lower().split()
+        result = []
+        current_number = 0
+
+        for word in words:
+            if word in words_to_digits['not_multi'] or word in words_to_digits['multi']:
+                print(word)
+                if words_to_digits['multi'].get(word):
+                    current_number += words_to_digits['multi'].get(word)
+                    
+                    print(current_number)
+                
+                elif words_to_digits['not_multi'].get(word):
+                    current_number += words_to_digits['not_multi'].get(word)
+                    
+                    print(current_number)
+                    
+                    result.append(str(current_number))
+                    current_number = 0
+                
+            else:
+                if current_number > 0:
+                    result.append(str(current_number))
+                    current_number = 0
+                result.append(word)
+        
+        print(current_number)
+        if current_number > 0:
+            result.append(str(current_number))
+
+        return ' '.join(result)
+
+    # Преобразуем текст
+    message = replace_words_with_digits(message)
+    print(message)
+    # Регулярное выражение для поиска номеров телефонов
+    phone_pattern = re.compile(
+        r'\b(?:\+?7|8)?[-.\s()]*(\d{3})[-.\s()]*(\d{3})[-.\s()]*(\d{2})[-.\s()]*(\d{2})\b'
+    )
+
+    # Поиск номера телефона
+    return bool(phone_pattern.search(message))

@@ -98,7 +98,7 @@ def create_stop_application_keyboard():
 
 def create_finish_application_keyboard():
     return generate_inline_markup([
-        ['Я получил оплату, завершить работу', callbacks.EXACTLY_FINISH_CALLBACK],
+        ['Вернуться к общему списку заявок', callbacks.EXACTLY_FINISH_CALLBACK],
         ['Назад', callbacks.BACK_TO_APPLICATION_CALLBACK]
     ])
 
