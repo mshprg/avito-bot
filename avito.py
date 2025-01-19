@@ -157,6 +157,17 @@ def phone_contains_in_messages(messages, author_id):
                 return True
     return False
 
+def get_application_content(messages, author_id, message_number: int = 1):
+    author_message_counter = 0
+    for m in messages:
+        if m['author_id'] == author_id:
+            application_content = m['content'].get('text')
+            author_message_counter += 1
+
+            if m['type'] == "text" and author_message_counter == message_number and application_content:
+                return application_content
+
+
 
 def find_handled_message(message_id, chat_id):
     for obj in application_chat_ids:
@@ -242,13 +253,14 @@ async def handle_webhook_message(request):
 
         # Чат считается новым если кол-во сообщений было менее или равно 1 и не от нас
         if phone_contains and author_id != user_id:
+            new_application_content = get_application_content(messages, author_id, message_number=1)
             # Создаем новую заявку
             await add_new_application(
                 user_id=user_id,
                 chat_id=chat_id,
                 m_id=m_id,
                 m_type=m_type,
-                content=content,
+                content=new_application_content,
                 author_id=author_id,
                 created=created
             )
