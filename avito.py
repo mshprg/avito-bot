@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 import aiohttp
+import logging
 from aiogram.types import InputMediaPhoto, BufferedInputFile
 from sqlalchemy import select, and_, or_
 
@@ -19,6 +20,8 @@ application_chat_ids = []
 COUNT_OTHER_MESSAGES = 7
 token_info = None
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Получение токена авито
 def get_token_info():
@@ -163,9 +166,11 @@ def get_application_content(messages, author_id, message_number: int = 1):
         if m['author_id'] == author_id:
             application_content = m['content'].get('text')
             author_message_counter += 1
-
+            logging.info(f'{author_message_counter} {message_number} {application_content} - переходим к проверке условий.')
             if m['type'] == "text" and author_message_counter == message_number and application_content:
+                logging.info(f'{author_message_counter} {message_number} {application_content}')
                 return application_content
+    return False
 
 
 
@@ -249,11 +254,17 @@ async def handle_webhook_message(request):
 
         # Получаем список сообщений и считаем кол-во сообщений от собеседника
         messages = get_messages(user_id, chat_id)['messages']
+        print('MESSAGES', messages)
+
         phone_contains = phone_contains_in_messages(messages, author_id)
+        print('PHONE_CONTAINS', phone_contains)
+
+        new_application_content = get_application_content(messages, author_id, message_number=1)
+        logger.info(f'{new_application_content}')
 
         # Чат считается новым если кол-во сообщений было менее или равно 1 и не от нас
-        if phone_contains and author_id != user_id:
-            new_application_content = get_application_content(messages, author_id, message_number=1)
+        if phone_contains and author_id != user_id and new_application_content:
+            logger.info('Все проверки на 266 строке пройдены')
             # Создаем новую заявку
             await add_new_application(
                 user_id=user_id,

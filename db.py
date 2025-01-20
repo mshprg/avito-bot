@@ -9,7 +9,7 @@ import config
 # Создание базы даных
 
 Base = declarative_base()
-engine = create_async_engine(config.DATABASE_URL, echo=True)
+engine = create_async_engine(config.DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
