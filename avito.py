@@ -253,7 +253,7 @@ async def handle_webhook_message(request):
     if d['is_new']:
 
         # Получаем список сообщений и считаем кол-во сообщений от собеседника
-        messages = get_messages(user_id, chat_id)['messages']
+        messages = get_messages(user_id, chat_id)['messages'][::-1]
         print('MESSAGES', messages)
 
         phone_contains = phone_contains_in_messages(messages, author_id)
